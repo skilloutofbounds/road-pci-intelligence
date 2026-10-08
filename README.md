@@ -25,15 +25,17 @@ flowchart LR
 
 ## Status Checklist
 
-- [x] **Step 0: Environment & Tooling Verification** (Python 3.14, Git, Kaggle CLI, GitHub CLI authenticated)
-- [x] **Step 1: Project Scaffolding & Version Control** (Directory structure, requirements, git initialization, GitHub repository)
-- [ ] **Step 2: Dataset Discovery & Selection** (Evaluate Kaggle benchmarks for crack types & potholes)
-- [ ] **Step 3: Exploratory Data Analysis Notebook** (Image resolution checks, mask formats, class distributions via Kaggle Kernels)
-- [ ] **Step 4: Dataset Preprocessing & Standardization** (Convert annotations to uniform binary/multi-class masks, train/val/test splits)
-- [ ] **Step 5: Model Training & Evaluation** (Semantic segmentation benchmarks, mIoU / Dice loss tracking)
-- [ ] **Step 6: Automated PCI Computation Module** (Defect severity calculation from mask geometry)
-- [ ] **Step 7: Budget Optimization Engine** (Cost estimation, knapsack/priority allocation)
-- [ ] **Step 8: Interactive Streamlit Web Application** (User uploads, mask visualizations, budget scenario runner)
+- [x] **Environment & Tooling Verification** (Python 3.14, Git, Kaggle CLI, GitHub CLI authenticated)
+- [x] **Project Scaffolding & Version Control** (Directory structure, requirements, git initialization, GitHub repository)
+- [x] **Dataset Discovery & Selection** (Selected `pothole-image-segmentation-dataset`, `road-crack-dataset`, `crack500`, and `rdd2022es`)
+- [ ] **Step 1: Data Exploration & Schema Audit** *(In Progress)*:
+  - Kaggle Notebook: [`vedshah04/road-pci-intelligence-data-exploration`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-data-exploration)
+  - Tasks: Directory tree audit, resolution distributions, mask inspection, multi-class bounding box parsing.
+- [ ] **Step 2: Dataset Preprocessing & Standardization** (Convert polygon/YOLO annotations to uniform pixel masks, train/val/test splits)
+- [ ] **Step 3: Deep Semantic Segmentation Model** (U-Net / FPN training with `segmentation-models-pytorch`, mIoU evaluation)
+- [ ] **Step 4: Automated PCI Computation Module** (Severity deduction curves from predicted mask areas)
+- [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
+- [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
 
 ---
 
