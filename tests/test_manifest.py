@@ -53,6 +53,8 @@ class TestDatasetManifests(unittest.TestCase):
             leaked_rdd = rdd_leak[rdd_leak > 1]
             self.assertEqual(len(leaked_rdd), 0, f"Leakage detected in RDD2022ES! Leaked groups: {list(leaked_rdd.index[:5])}")
             print(f"[PASS] Zero group_id leakage in 'rdd2022es' across 3 splits.")
+        else:
+            print("[SKIPPED (RDD manifest not built in this run)] RDD2022ES leakage check.")
 
     def test_02_every_manifest_path_exists_on_disk(self):
         """(b) Assert that all image and mask/label file paths recorded exist on disk."""
@@ -86,6 +88,8 @@ class TestDatasetManifests(unittest.TestCase):
                     img_file = root_rdd / row['image_path']
                     self.assertTrue(img_file.exists(), f"Missing image file in RDD2022ES: {img_file}")
                 print(f"[PASS] Sampled paths verified on disk for 'rdd2022es'.")
+        else:
+            print("[SKIPPED (RDD manifest not built in this run)] RDD2022ES disk paths existence check.")
 
     def test_03_split_sizes_match_specifications(self):
         """(c) Assert split sizes match the established targets."""
@@ -120,12 +124,13 @@ class TestDatasetManifests(unittest.TestCase):
             self.assertEqual(len(self.df_rdd[self.df_rdd['split'] == 'val']), 2560)
             self.assertEqual(len(self.df_rdd[self.df_rdd['split'] == 'test']), 2560)
             print(f"[PASS] RDD2022ES split sizes verified: {dict(self.df_rdd['split'].value_counts())}")
+        else:
+            print("[SKIPPED (RDD manifest not built in this run)] RDD2022ES split sizes check.")
 
     def test_04_rdd_mirrored_pairs_share_split(self):
         """(d) Assert that mirrored RDD2022ES pairs strictly share the exact same split."""
         if self.df_rdd is None:
-            print("Skipping RDD mirror test (RDD manifest not loaded).")
-            return
+            self.skipTest("SKIPPED (RDD manifest not built in this run)")
 
         split_per_group = self.df_rdd.groupby('group_id')['split'].nunique()
         self.assertTrue((split_per_group == 1).all(), "Some mirrored RDD pairs were assigned to different splits!")

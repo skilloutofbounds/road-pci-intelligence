@@ -445,10 +445,13 @@ def build_rdd2022es_manifest(dataset_root: Path, seed: int = RANDOM_SEED) -> pd.
 # ==============================================================================
 # MAIN DRIVER: GENERATE AND EXPORT ALL MANIFESTS
 # ==============================================================================
-def generate_all_manifests(output_dir: Path = Path('manifests')) -> Dict[str, pd.DataFrame]:
+def generate_all_manifests(output_dir: Path = Path('manifests'), build_rdd: bool = False) -> Dict[str, pd.DataFrame]:
     """
-    Discovers all 4 datasets, generates their manifests, and exports CSV files
+    Discovers all datasets, generates their manifests, and exports CSV files
     to output_dir (root/manifests/).
+    
+    Segmentation manifests (pothole, road_crack, crack500) are rebuilt from real files every time.
+    RDD2022ES manifest is built only when build_rdd is True.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     manifests = {}
@@ -456,6 +459,7 @@ def generate_all_manifests(output_dir: Path = Path('manifests')) -> Dict[str, pd
     print("=" * 80)
     print("ROAD PCI INTELLIGENCE: BUILDING DATASET MANIFESTS")
     print(f"Output Directory: {output_dir.resolve()}")
+    print(f"Build RDD2022ES: {build_rdd}")
     print("=" * 80)
 
     # 1. Pothole
@@ -503,16 +507,19 @@ def generate_all_manifests(output_dir: Path = Path('manifests')) -> Dict[str, pd
         print(f"\nSaved Unified {output_dir / 'segmentation_manifest.csv'} ({len(df_seg)} records)")
 
     # 5. RDD2022ES (Bounding Box manifest)
-    spec_r = DATASET_SPECS['rdd2022es']
-    root_r = resolve_dataset_root(spec_r['owner'], spec_r['name'])
-    if root_r:
-        print(f"\nBuilding manifest for RDD2022ES dataset ({root_r})...")
-        df_r = build_rdd2022es_manifest(root_r)
-        df_r.to_csv(output_dir / 'rdd2022es_manifest.csv', index=False)
-        manifests['rdd2022es'] = df_r
-        print(f"Saved {output_dir / 'rdd2022es_manifest.csv'} ({len(df_r)} records)")
+    if build_rdd:
+        spec_r = DATASET_SPECS['rdd2022es']
+        root_r = resolve_dataset_root(spec_r['owner'], spec_r['name'])
+        if root_r:
+            print(f"\nBuilding manifest for RDD2022ES dataset ({root_r})...")
+            df_r = build_rdd2022es_manifest(root_r)
+            df_r.to_csv(output_dir / 'rdd2022es_manifest.csv', index=False)
+            manifests['rdd2022es'] = df_r
+            print(f"Saved {output_dir / 'rdd2022es_manifest.csv'} ({len(df_r)} records)")
+        else:
+            print(f"Warning: Root for {spec_r['name']} not found!")
     else:
-        print(f"Warning: Root for {spec_r['name']} not found!")
+        print("\n[build_manifest] Skipping RDD2022ES manifest build (build_rdd=False).")
 
     # Print Summary Table
     print("\n" + "=" * 80)
@@ -539,4 +546,5 @@ def generate_all_manifests(output_dir: Path = Path('manifests')) -> Dict[str, pd
 
 
 if __name__ == '__main__':
-    generate_all_manifests()
+    generate_all_manifests(build_rdd=True)
+

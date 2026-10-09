@@ -43,6 +43,7 @@ kaggle.json
 # Project specific data and model weights
 data/
 outputs/
+scratch/
 *.pt
 *.pth
 

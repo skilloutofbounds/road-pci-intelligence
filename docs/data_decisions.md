@@ -58,7 +58,7 @@ Naive random splitting causes severe data leakage in road distress datasets due 
 | Source | Group Identifier (`group_id`) | Split Strategy | Partition Counts |
 | :--- | :--- | :--- | :--- |
 | **`pothole`** | Base scene prefix `pic-<N>` stripped of augmentation hash (e.g., `pic-282`). | Test = official unaugmented `valid/` directory.<br>Val = 15% of train group IDs (deterministic, seed 42).<br>Train = remaining 85% of train groups.<br>*(All 3 augmented variants of any group strictly share the same split).* | • **Train**: 612 images (204 groups)<br>• **Val**: 108 images (36 groups)<br>• **Test**: 60 images (60 groups)<br>• **Total**: 780 images (300 groups) |
-| **`road_crack`** | Physical scene stem (`road_<N>` or `Production_1_ortho_merge`). | Scene-level group split targeting ~70% train / 15% val / 15% test by image count (seed 42). All tiles of a physical road segment stay together. | • **Train**: 294 images (15 scenes, 67.6%)<br>• **Val**: 71 images (4 scenes, 16.3%)<br>• **Test**: 70 images (3 scenes, 16.1%)<br>• **Total**: 435 images (22 scenes) |
+| **`road_crack`** | Physical scene stem (`road_<N>` or `Production_1_ortho_merge`). | Scene-level group split targeting ~70% train / 15% val / 15% test by image count (seed 42). All tiles of a physical road segment stay together. | • **Train**: 290 images (14 scenes, 66.7%)<br>• **Val**: 77 images (4 scenes, 17.7%)<br>• **Test**: 68 images (4 scenes, 15.6%)<br>• **Total**: 435 images (22 scenes) |
 | **`crack500`** | Base capture image stem (e.g., `20160222_165402`). | Preserves official benchmark split lists verbatim (`train.lst`, `val.lst`, `test.lst`). | • **Train**: 329 images<br>• **Val**: 70 images<br>• **Test**: 72 images<br>• **Total**: 471 images |
 | **`rdd2022es`** | Filename stem with `xmirror_` prefix removed (e.g., `Czech_000000`). | 80% train / 10% val / 10% test by group ID (seed 42). Mirrored pairs (`Czech_...` and `xmirror_Czech_...`) strictly share the same split. | • **Train**: 20,480 images (10,240 groups)<br>• **Val**: 2,560 images (1,280 groups)<br>• **Test**: 2,560 images (1,280 groups)<br>• **Total**: 25,600 images (12,800 groups) |
 
@@ -93,7 +93,7 @@ $$\mathcal{L}_{\text{seg}}(y, \hat{y}) = \lambda_{\text{BCE}} \mathcal{L}_{\text
 
 ---
 
-## 5. Known Limitations & Mitigation Strategies
+## 5. Known Limitations, Mitigation Strategies & Reconciled Metrics
 
 ### 1. Concrete vs. Asphalt Domain Shift
 - **Domain Gap**: `road_crack` is sourced from concrete slab pavements (high albedo, aggregate exposure, saw-cut joints), whereas `crack500` and `pothole` are predominantly asphalt (dark bitumen, fine bitumen aggregate, oil stains).
@@ -107,7 +107,33 @@ $$\mathcal{L}_{\text{seg}}(y, \hat{y}) = \lambda_{\text{BCE}} \mathcal{L}_{\text
   1. We implement a reference physical calibration prior (e.g., standard lane width prior $\approx 3.65\text{ m}$ or standard road marking dimensions) to compute an estimated ground scale.
   2. For downstream simulation, distress severity is parameterized using relative fractional area, morphological skeleton length, and contour diameter priors until calibrated metric inputs are supplied.
 
-### 3. Foreground Class Imbalance
-- Cracks occupy approximately $1.5\% - 3.0\%$ of total image pixels.
-- Potholes occupy approximately $2.0\% - 4.5\%$ of total image pixels.
-- **Mitigation**: Using compound loss with Dice loss ($\text{Dice} = 1 - \frac{2|X \cap Y| + \epsilon}{|X| + |Y| + \epsilon}$) alongside focal/BCE loss to prevent background collapse.
+### 3. Foreground Class Imbalance & Metric Reconciliation (Ground-Truth Mask Audit)
+Foreground distress coverage was rigorously recomputed from actual binary masks across all sources and splits on Kaggle:
+
+#### Reconciled Metrics per Source & Split
+| Source | Split | Images | Groups | Defect | Total Pixels | Foreground Pixels | Pixel-Weighted FG (%) | Mean Per-Image FG (%) | Median Per-Image (%) | Min Per-Image (%) | Max Per-Image (%) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`road_crack`** | train | 290 | 14 | Crack | 118,784,000 | 2,248,541 | **1.893%** | 1.893% | 1.156% | 0.000% | 9.237% |
+| **`road_crack`** | val | 77 | 4 | Crack | 31,539,200 | 195,639 | **0.620%** | 0.620% | 0.000% | 0.000% | 3.342% |
+| **`road_crack`** | test | 68 | 4 | Crack | 27,852,800 | 682,169 | **2.449%** | 2.449% | 1.666% | 0.000% | 5.990% |
+| **`crack500`** | train | 329 | 329 | Crack | 1,336,676,544 | 35,278,061 | **2.639%** | 2.724% | 2.373% | 0.217% | 9.461% |
+| **`crack500`** | val | 70 | 70 | Crack | 296,474,112 | 7,717,648 | **2.603%** | 2.687% | 2.192% | 0.230% | 7.102% |
+| **`crack500`** | test | 72 | 72 | Crack | 299,460,096 | 8,229,300 | **2.748%** | 2.805% | 2.402% | 0.335% | 8.683% |
+| **`pothole`** | train | 612 | 204 | Pothole | 250,675,200 | 41,157,025 | **16.418%** | 16.418% | 13.214% | 0.022% | 97.762% |
+| **`pothole`** | val | 108 | 36 | Pothole | 44,236,800 | 5,553,825 | **12.555%** | 12.555% | 9.768% | 1.726% | 36.830% |
+| **`pothole`** | test | 60 | 60 | Pothole | 24,576,000 | 43,29,646 | **17.617%** | 17.617% | 14.810% | 0.410% | 58.448% |
+
+#### Overall Per-Source Ground Truth Summary
+- **`road_crack`** (435 images): **1.7546%** pixel-weighted foreground (3,126,349 crack pixels / 178,176,000 total pixels). Mean per-image: **1.7546%**, Median: **1.0728%**, Min: **0.0000%**, Max: **9.2373%**.
+  - Multi-class raw mask value audit across all 435 masks:
+    - Value 0: 171,393,312 pixels (96.1933%)
+    - Value 1: **3,126,349 pixels** (1.7546%) — **matches earlier audit of 3,126,349 exactly (delta = 0)**.
+    - Value 2: 3,617,725 pixels (2.0304%)
+    - Value 3: 38,614 pixels (0.0217%)
+- **`crack500`** (471 images): **2.6506%** pixel-weighted foreground (51,225,009 crack pixels / 1,932,610,752 total pixels). Mean per-image: **2.7309%**, Median: **2.3727%**, Min: **0.2174%**, Max: **9.4612%**.
+- **`pothole`** (780 images): **15.9757%** pixel-weighted foreground (51,040,496 pothole pixels / 319,488,000 total pixels). Mean per-image: **15.9757%**, Median: **12.7563%**, Min: **0.0222%**, Max: **97.7625%**.
+  - **Pothole Reconciliation Notes**:
+    - The earlier exploratory audit reported unweighted mean per-image coverage (15.98%) and median per-image coverage (12.78%) using `int(coord * dim)` integer truncation.
+    - Under `data_rules.py` `int(round(coord * dim))` rounding rasterization: Mean per-image is **15.98%** (identical), Median per-image is **12.76%** (delta -0.02% from rounding vs truncation).
+    - Because all 780 pothole images share identical 640x640 dimensions, the aggregate pixel-weighted fraction (15.9757%) is mathematically identical to the unweighted mean of individual per-image fractions.
+- **Mitigation for Class Imbalance**: Compound loss combining Binary Cross-Entropy with Soft Dice loss ($\text{Dice} = 1 - \frac{2|X \cap Y| + \epsilon}{|X| + |Y| + \epsilon}$) to prevent background collapse.
