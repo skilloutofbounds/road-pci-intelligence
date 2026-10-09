@@ -1,7 +1,7 @@
 {
-  "id": "vedshah04/road-pci-intelligence-data-exploration",
-  "title": "Road PCI Intelligence - Data Exploration",
-  "code_file": "01_data_exploration.ipynb",
+  "id": "vedshah04/road-pci-intelligence-manifests-and-loader",
+  "title": "Road PCI Intelligence - Manifests and Loader",
+  "code_file": "02_manifest_and_loader.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": "true",

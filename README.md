@@ -28,10 +28,16 @@ flowchart LR
 - [x] **Environment & Tooling Verification** (Python 3.14, Git, Kaggle CLI, GitHub CLI authenticated)
 - [x] **Project Scaffolding & Version Control** (Directory structure, requirements, git initialization, GitHub repository)
 - [x] **Dataset Discovery & Selection** (Selected `pothole-image-segmentation-dataset`, `road-crack-dataset`, `crack500`, and `rdd2022es`)
-- [ ] **Step 1: Data Exploration & Schema Audit** *(In Progress)*:
+- [x] **Step 1: Data Exploration & Schema Audit** *(Done)*:
   - Kaggle Notebook: [`vedshah04/road-pci-intelligence-data-exploration`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-data-exploration)
-  - Tasks: Directory tree audit, resolution distributions, mask inspection, multi-class bounding box parsing.
-- [ ] **Step 2: Dataset Preprocessing & Standardization** (Convert polygon/YOLO annotations to uniform pixel masks, train/val/test splits)
+  - Directory tree audit, resolution stats, mask value distributions, duplication & base-ID leakage checks.
+- [x] **Step 2: Manifests, Mask Standardization & Leak-Proof Splits** *(Done)*:
+  - Kaggle Notebook: [`vedshah04/road-pci-intelligence-manifests-and-loader`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-manifests-and-loader)
+  - Unified CSV manifests in `manifests/` with relative paths (`pothole`, `road_crack`, `crack500`, `rdd2022es`).
+  - Standardized mask conversions & documented assumptions (`src/data_rules.py`).
+  - Leak-proof group partitioning (pothole `pic-<N>`, road-crack scene 70/15/15, RDD2022ES mirror pairing).
+  - Validation test suite (`tests/test_manifest.py`) passing 100% on Kaggle.
+  - Comprehensive documentation in [`docs/data_decisions.md`](docs/data_decisions.md).
 - [ ] **Step 3: Deep Semantic Segmentation Model** (U-Net / FPN training with `segmentation-models-pytorch`, mIoU evaluation)
 - [ ] **Step 4: Automated PCI Computation Module** (Severity deduction curves from predicted mask areas)
 - [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
@@ -45,9 +51,12 @@ flowchart LR
 road-pci-intelligence/
 ├── app/                  # Streamlit application UI and components
 ├── data/                 # Raw and processed datasets (git-ignored)
-├── notebooks/            # Jupyter/Kaggle exploration & training notebooks
+├── docs/                 # Architectural documentation & data decisions
+├── manifests/            # Version-controlled CSV manifests for training & validation
+├── notebooks/            # Jupyter/Kaggle exploration, manifest, & training notebooks
 ├── outputs/              # Model checkpoints, evaluation plots, and reports (git-ignored)
-├── src/                  # Core modular source code (data loaders, model, PCI, optimization)
+├── src/                  # Core modular source code (rules, builders, models, PCI)
+├── tests/                # Automated unit test suite (manifest validation & leak checks)
 ├── .gitignore            # Git ignore configuration
 ├── README.md             # Project overview and roadmap
 └── requirements.txt      # Project Python dependencies
