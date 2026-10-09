@@ -1,0 +1,17 @@
+{
+  "id": "vedshah04/road-pci-intelligence-rdd-manifest-builder",
+  "title": "Road PCI Intelligence - RDD Manifest Builder",
+  "code_file": "03_build_rdd_manifest.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "false",
+  "enable_tpu": "false",
+  "enable_internet": "false",
+  "dataset_sources": [
+    "juusos/rdd2022es"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
