@@ -41,13 +41,14 @@ flowchart LR
   - Validation test suite (`tests/test_manifest.py`) passing 100% on Kaggle.
   - Rigorous ground-truth foreground metric reconciliation across all 1,686 masks.
   - Comprehensive documentation in [`docs/data_decisions.md`](docs/data_decisions.md).
-- [x] **Step 3A: Training Pipeline, Sanity Checks & Smoke Test** *(In Progress)*:
+- [x] **Step 3A: Training Pipeline, Sanity Checks & Smoke Test** *(Done)*:
   - Kaggle Notebook: [`vedshah04/road-pci-intelligence-train-baseline`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-train-baseline) ([`notebooks/04_train_baseline/`](notebooks/04_train_baseline/))
   - Pretrained U-Net (ResNet-34 ImageNet weights, `segmentation-models-pytorch`) with 2 independent sigmoid outputs `[crack, pothole]`.
-  - Custom `MaskedMultiTaskLoss` (BCE + Soft Dice) with selective gradient masking for un-supervised channels.
+  - Custom `MaskedMultiTaskLoss` (BCE + Soft Dice) with selective gradient masking for un-supervised channels (`tests/test_losses.py` passed 100%).
   - `SourceBalancedSampler` drawing 600 samples/epoch (200 crack500, 200 road_crack, 200 pothole).
-  - Full image eval with 32-multiple padding and unpadding.
-  - Rigorous sanity checks: loss unit tests, 8-sample overfit test (Dice > 0.85), 3-epoch smoke test, and validation overlays.
+  - Sanity Check 2 Overfit Test: Achieved **0.9601** Mean Dice on 8 samples (crack500: 0.9389, road_crack: 0.9509, pothole: 0.9906), well exceeding the > 0.85 target.
+  - Sanity Check 3 Smoke Test: 3 full epochs completed with augmentation, AMP, and cosine decay (Epoch 3 train loss: 1.8012, mean val Dice: 0.4348).
+  - Sanity Check 4: Saved 6 validation prediction overlays per source (`image | ground truth | prediction`) with clean titles.
 - [ ] **Step 3B: Full Deep Semantic Segmentation Training & Convergence** (Extended epochs, learning rate tuning, best checkpoint tracking)
 - [ ] **Step 4: Automated PCI Computation Module** (Severity deduction curves from predicted mask areas)
 - [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
