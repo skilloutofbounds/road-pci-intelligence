@@ -43,6 +43,7 @@ from src.datasets import RoadDistressDataset, SourceBalancedSampler, get_eval_tr
 from src.losses import MaskedMultiTaskLoss
 from src.metrics import DistressMetricTracker
 from src.build_manifest import DATASET_SPECS, resolve_dataset_root
+from src.data_rules import load_standardized_mask
 
 
 def seed_everything(seed: int = 42):
