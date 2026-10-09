@@ -41,7 +41,14 @@ flowchart LR
   - Validation test suite (`tests/test_manifest.py`) passing 100% on Kaggle.
   - Rigorous ground-truth foreground metric reconciliation across all 1,686 masks.
   - Comprehensive documentation in [`docs/data_decisions.md`](docs/data_decisions.md).
-- [ ] **Step 3: Deep Semantic Segmentation Model** (U-Net / FPN training with `segmentation-models-pytorch`, mIoU evaluation)
+- [x] **Step 3A: Training Pipeline, Sanity Checks & Smoke Test** *(In Progress)*:
+  - Kaggle Notebook: [`vedshah04/road-pci-intelligence-train-baseline`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-train-baseline) ([`notebooks/04_train_baseline/`](notebooks/04_train_baseline/))
+  - Pretrained U-Net (ResNet-34 ImageNet weights, `segmentation-models-pytorch`) with 2 independent sigmoid outputs `[crack, pothole]`.
+  - Custom `MaskedMultiTaskLoss` (BCE + Soft Dice) with selective gradient masking for un-supervised channels.
+  - `SourceBalancedSampler` drawing 600 samples/epoch (200 crack500, 200 road_crack, 200 pothole).
+  - Full image eval with 32-multiple padding and unpadding.
+  - Rigorous sanity checks: loss unit tests, 8-sample overfit test (Dice > 0.85), 3-epoch smoke test, and validation overlays.
+- [ ] **Step 3B: Full Deep Semantic Segmentation Training & Convergence** (Extended epochs, learning rate tuning, best checkpoint tracking)
 - [ ] **Step 4: Automated PCI Computation Module** (Severity deduction curves from predicted mask areas)
 - [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
 - [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
@@ -59,7 +66,8 @@ road-pci-intelligence/
 ├── notebooks/            # Isolated Jupyter/Kaggle notebook modules:
 │   ├── 01_data_exploration/     # Exploratory analysis notebook & metadata
 │   ├── 02_manifest_and_loader/  # Manifest builder & reconciliation notebook & metadata
-│   └── 03_build_rdd_manifest/   # 16-worker parallel RDD manifest builder & metadata
+│   ├── 03_build_rdd_manifest/   # 16-worker parallel RDD manifest builder & metadata
+│   └── 04_train_baseline/       # Training pipeline, sanity checks & smoke test
 ├── outputs/              # Model checkpoints, evaluation plots, and reports (git-ignored)
 ├── src/                  # Core modular source code (rules, builders, models, PCI)
 ├── tests/                # Automated unit test suite (manifest validation & leak checks)
