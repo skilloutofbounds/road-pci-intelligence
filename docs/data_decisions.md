@@ -121,7 +121,7 @@ Foreground distress coverage was rigorously recomputed from actual binary masks 
 | **`crack500`** | test | 72 | 72 | Crack | 299,460,096 | 8,229,300 | **2.748%** | 2.805% | 2.402% | 0.335% | 8.683% |
 | **`pothole`** | train | 612 | 204 | Pothole | 250,675,200 | 41,157,025 | **16.418%** | 16.418% | 13.214% | 0.022% | 97.762% |
 | **`pothole`** | val | 108 | 36 | Pothole | 44,236,800 | 5,553,825 | **12.555%** | 12.555% | 9.768% | 1.726% | 36.830% |
-| **`pothole`** | test | 60 | 60 | Pothole | 24,576,000 | 43,29,646 | **17.617%** | 17.617% | 14.810% | 0.410% | 58.448% |
+| **`pothole`** | test | 60 | 60 | Pothole | 24,576,000 | 4,329,646 | **17.617%** | 17.617% | 14.810% | 0.410% | 58.448% |
 
 #### Overall Per-Source Ground Truth Summary
 - **`road_crack`** (435 images): **1.7546%** pixel-weighted foreground (3,126,349 crack pixels / 178,176,000 total pixels). Mean per-image: **1.7546%**, Median: **1.0728%**, Min: **0.0000%**, Max: **9.2373%**.
