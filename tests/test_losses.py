@@ -139,6 +139,47 @@ class TestMaskedLosses(unittest.TestCase):
         self.assertAlmostEqual(zero_dice, 0.0, places=3)
         print(f"[PASS] (d) Dice metric: perfect = {perfect_dice:.5f} (~1), all-zero = {zero_dice:.5f} (~0).")
 
+    def test_05_naive_mode_supervises_unlabeled_channels(self):
+        """
+        In 'naive' mode, an unlabeled channel is included in the loss with all-zero targets,
+        producing non-zero gradients on logits for that channel.
+        """
+        loss_fn = MaskedMultiTaskLoss(loss_mode='naive')
+        
+        logits = torch.randn(1, 2, 16, 16, requires_grad=True)
+        targets = torch.zeros(1, 2, 16, 16)
+        targets[0, 1, 4:8, 4:8] = 1.0  # Pothole only; crack is all zeros
+        label_mask = torch.tensor([[0.0, 1.0]])  # Crack unlabeled
+        
+        loss, loss_dict = loss_fn(logits, targets, label_mask)
+        loss.backward()
+        
+        crack_grad = logits.grad[0, 0, :, :]
+        # In naive mode, crack channel IS supervised against all zeros, so gradient must be non-zero
+        self.assertGreater(
+            crack_grad.abs().max().item(), 0.0,
+            "Expected non-zero gradient on the crack channel in naive mode."
+        )
+        self.assertGreater(loss_dict['loss_crack'], 0.0)
+        print("[PASS] (e) Naive mode supervises unlabeled channel with non-zero gradient.")
+
+    def test_06_configurable_loss_terms(self):
+        """
+        Verify loss_terms ('bce+dice', 'bce', 'dice') correctly configure weights.
+        """
+        loss_both = MaskedMultiTaskLoss(loss_terms='bce+dice')
+        self.assertEqual(loss_both.bce_weight, 1.0)
+        self.assertEqual(loss_both.dice_weight, 1.0)
+        
+        loss_bce = MaskedMultiTaskLoss(loss_terms='bce')
+        self.assertEqual(loss_bce.bce_weight, 1.0)
+        self.assertEqual(loss_bce.dice_weight, 0.0)
+        
+        loss_dice = MaskedMultiTaskLoss(loss_terms='dice')
+        self.assertEqual(loss_dice.bce_weight, 0.0)
+        self.assertEqual(loss_dice.dice_weight, 1.0)
+        print("[PASS] (f) Configurable loss terms ('bce+dice', 'bce', 'dice') verified.")
+
 
 if __name__ == '__main__':
     unittest.main()

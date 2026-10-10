@@ -46,23 +46,49 @@ def soft_dice_loss(
 
 class MaskedMultiTaskLoss(nn.Module):
     """
-    Multi-channel masked loss supporting partial supervision.
+    Multi-channel loss supporting partial supervision ('masked' mode) or naive multi-task ('naive' mode).
     
-    Each channel (0: Crack, 1: Pothole) is supervised independently only
-    over samples where label_mask[:, c] == 1.
-    If no samples in a batch label channel c, the loss for that channel is exactly 0.0.
+    - In 'masked' mode:
+      Each channel (0: Crack, 1: Pothole) is supervised independently only
+      over samples where label_mask[:, c] == 1.
+      If no samples in a batch label channel c, the loss for that channel is exactly 0.0.
+      
+    - In 'naive' mode:
+      All samples in the batch are supervised on all channels. For unlabeled channels,
+      the target mask is all zeros (as provided by dataset) and that channel IS included in the loss.
+      
+    Loss terms supported:
+      - 'bce+dice': BCE + soft Dice (default)
+      - 'bce': BCE only
+      - 'dice': soft Dice only
     """
     
     def __init__(
         self,
         bce_weight: float = 1.0,
         dice_weight: float = 1.0,
+        loss_mode: str = 'masked',
+        loss_terms: str = 'bce+dice',
         channel_weights: Tuple[float, float] = (1.0, 1.0),
         smooth: float = 1.0
     ):
         super().__init__()
-        self.bce_weight = bce_weight
-        self.dice_weight = dice_weight
+        assert loss_mode in ('masked', 'naive'), f"Unknown loss_mode: {loss_mode}. Must be 'masked' or 'naive'."
+        assert loss_terms in ('bce+dice', 'bce', 'dice'), f"Unknown loss_terms: {loss_terms}. Must be 'bce+dice', 'bce', or 'dice'."
+        
+        self.loss_mode = loss_mode
+        self.loss_terms = loss_terms
+        
+        if loss_terms == 'bce+dice':
+            self.bce_weight = bce_weight
+            self.dice_weight = dice_weight
+        elif loss_terms == 'bce':
+            self.bce_weight = bce_weight if bce_weight > 0 else 1.0
+            self.dice_weight = 0.0
+        elif loss_terms == 'dice':
+            self.bce_weight = 0.0
+            self.dice_weight = dice_weight if dice_weight > 0 else 1.0
+            
         self.channel_weights = channel_weights
         self.smooth = smooth
         
@@ -90,8 +116,12 @@ class MaskedMultiTaskLoss(nn.Module):
         loss_dict = {}
         
         for c in range(C):
-            # Select valid samples for this channel
-            valid_idx = torch.where(label_mask[:, c] > 0.5)[0]
+            if self.loss_mode == 'naive':
+                # In naive mode, supervise all samples in batch; unlabeled channels are all zeros
+                valid_idx = torch.arange(B, device=device)
+            else:
+                # In masked mode, supervise only samples with positive label mask
+                valid_idx = torch.where(label_mask[:, c] > 0.5)[0]
             
             if len(valid_idx) == 0:
                 # No supervision for this channel in this batch
@@ -102,9 +132,17 @@ class MaskedMultiTaskLoss(nn.Module):
                 c_logits = logits[valid_idx, c, :, :]
                 c_targets = targets[valid_idx, c, :, :].to(dtype=dtype)
                 
-                c_bce = F.binary_cross_entropy_with_logits(c_logits, c_targets)
-                c_probs = torch.sigmoid(c_logits)
-                c_dice = soft_dice_loss(c_probs, c_targets, smooth=self.smooth)
+                if self.bce_weight > 0:
+                    c_bce = F.binary_cross_entropy_with_logits(c_logits, c_targets)
+                else:
+                    c_bce = torch.tensor(0.0, device=device, dtype=dtype)
+                    
+                if self.dice_weight > 0:
+                    c_probs = torch.sigmoid(c_logits)
+                    c_dice = soft_dice_loss(c_probs, c_targets, smooth=self.smooth)
+                else:
+                    c_dice = torch.tensor(0.0, device=device, dtype=dtype)
+                    
                 c_loss = self.bce_weight * c_bce + self.dice_weight * c_dice
                 
             ch_name = 'crack' if c == 0 else 'pothole'
@@ -116,5 +154,7 @@ class MaskedMultiTaskLoss(nn.Module):
             
         total_loss = sum(channel_losses)
         loss_dict['loss_total'] = total_loss.item()
+        loss_dict['loss_mode'] = self.loss_mode
+        loss_dict['loss_terms'] = self.loss_terms
         
         return total_loss, loss_dict
