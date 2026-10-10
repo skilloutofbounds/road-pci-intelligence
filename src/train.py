@@ -365,10 +365,10 @@ def run_threshold_sweep(
     model: nn.Module,
     dataloader: DataLoader,
     device: torch.device,
-    thresholds: List[float] = [0.3, 0.4, 0.5, 0.6, 0.7]
+    thresholds: List[float] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 ) -> List[Dict[str, float]]:
     """
-    Sweeps decision threshold across {0.3, 0.4, 0.5, 0.6, 0.7} on validation split.
+    Sweeps decision threshold across {0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9} on validation split.
     Uses precomputed sigmoid probabilities to evaluate all thresholds efficiently in one pass.
     """
     model.eval()
@@ -404,19 +404,23 @@ def run_threshold_sweep(
 
 def print_threshold_table(sweep_results: List[Dict[str, float]]):
     """Prints a clean, formatted table of threshold sweep results per source."""
-    print("\n" + "=" * 90)
+    print("\n" + "=" * 110)
     print("VALIDATION THRESHOLD SWEEP (Trained Model 'best.pt' on Val Split)")
-    print("=" * 90)
-    print(f"{'Source':<12} | {'Threshold':<9} | {'Dataset IoU':<12} | {'Dataset Dice':<12} | {'Mean Img Dice':<14}")
-    print("-" * 90)
+    print("=" * 110)
+    print(f"{'Source':<12} | {'Threshold':<9} | {'Dataset IoU':<12} | {'Dataset Dice':<12} | {'Mean Img Dice':<14} | {'NonEmpty Dice (N)':<18}")
+    print("-" * 110)
     for res in sweep_results:
         th = res['threshold']
         for src in ['crack500', 'road_crack', 'pothole']:
             ds_iou = res.get(f'{src}_dataset_iou', 0.0)
             ds_dice = res.get(f'{src}_dataset_dice', 0.0)
             m_dice = res.get(f'{src}_mean_image_dice', 0.0)
-            print(f"{src:<12} | {th:<9.1f} | {ds_iou:<12.4f} | {ds_dice:<12.4f} | {m_dice:<14.4f}")
-        print("-" * 90)
+            ne_dice = res.get(f'{src}_non_empty_mean_image_dice', 0.0)
+            ne_n = res.get(f'{src}_non_empty_images', 0)
+            tot_n = res.get(f'{src}_images', 0)
+            ne_str = f"{ne_dice:.4f} ({ne_n}/{tot_n})"
+            print(f"{src:<12} | {th:<9.1f} | {ds_iou:<12.4f} | {ds_dice:<12.4f} | {m_dice:<14.4f} | {ne_str:<18}")
+        print("-" * 110)
 
 
 def plot_learning_curves(history: List[dict], output_path: Path):
@@ -648,7 +652,7 @@ def run_full_training(
     # Threshold sweep using best.pt on validation split only
     print("\nLoading best model checkpoint ('best.pt') for validation threshold sweep...")
     model.load_state_dict(torch.load(output_dir / 'best.pt', map_location=device))
-    sweep_results = run_threshold_sweep(model, val_loader, device, thresholds=[0.3, 0.4, 0.5, 0.6, 0.7])
+    sweep_results = run_threshold_sweep(model, val_loader, device, thresholds=[0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     print_threshold_table(sweep_results)
 
     # Save sweep results

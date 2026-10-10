@@ -59,9 +59,9 @@ class DistressMetricTracker:
 
     def reset(self):
         self.stats = {
-            'crack500': {'tp': 0, 'fp': 0, 'fn': 0, 'image_dices': []},
-            'road_crack': {'tp': 0, 'fp': 0, 'fn': 0, 'image_dices': []},
-            'pothole': {'tp': 0, 'fp': 0, 'fn': 0, 'image_dices': []}
+            'crack500': {'tp': 0, 'fp': 0, 'fn': 0, 'image_dices': [], 'non_empty_image_dices': [], 'empty_image_dices': []},
+            'road_crack': {'tp': 0, 'fp': 0, 'fn': 0, 'image_dices': [], 'non_empty_image_dices': [], 'empty_image_dices': []},
+            'pothole': {'tp': 0, 'fp': 0, 'fn': 0, 'image_dices': [], 'non_empty_image_dices': [], 'empty_image_dices': []}
         }
 
     def update(
@@ -105,6 +105,11 @@ class DistressMetricTracker:
         self.stats[source]['fn'] += fn
         self.stats[source]['image_dices'].append(dice_i)
 
+        if target_bin.sum() > 0:
+            self.stats[source]['non_empty_image_dices'].append(dice_i)
+        else:
+            self.stats[source]['empty_image_dices'].append(dice_i)
+
     def compute(self) -> Dict[str, float]:
         """
         Computes final dataset-level IoU and Dice, plus mean per-image Dice.
@@ -132,12 +137,19 @@ class DistressMetricTracker:
             # Mean per-image Dice
             mean_img_dice = float(np.mean(img_dices))
 
+            # Non-empty images (images with at least one target foreground pixel)
+            non_empty_dices = data.get('non_empty_image_dices', [])
+            n_non_empty = len(non_empty_dices)
+            mean_non_empty_dice = float(np.mean(non_empty_dices)) if n_non_empty > 0 else 0.0
+
             defect = 'Pothole' if src == 'pothole' else 'Crack'
             results[f'{src}_channel'] = defect
             results[f'{src}_images'] = n_images
+            results[f'{src}_non_empty_images'] = n_non_empty
             results[f'{src}_dataset_iou'] = ds_iou
             results[f'{src}_dataset_dice'] = ds_dice
             results[f'{src}_mean_image_dice'] = mean_img_dice
+            results[f'{src}_non_empty_mean_image_dice'] = mean_non_empty_dice
 
             all_src_dices.append(ds_dice)
 
