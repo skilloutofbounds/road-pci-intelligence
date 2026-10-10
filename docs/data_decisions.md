@@ -132,8 +132,5 @@ Foreground distress coverage was rigorously recomputed from actual binary masks 
     - Value 3: 38,614 pixels (0.0217%)
 - **`crack500`** (471 images): **2.6506%** pixel-weighted foreground (51,225,009 crack pixels / 1,932,610,752 total pixels). Mean per-image: **2.7309%**, Median: **2.3727%**, Min: **0.2174%**, Max: **9.4612%**.
 - **`pothole`** (780 images): **15.9757%** pixel-weighted foreground (51,040,496 pothole pixels / 319,488,000 total pixels). Mean per-image: **15.9757%**, Median: **12.7563%**, Min: **0.0222%**, Max: **97.7625%**.
-  - **Pothole Reconciliation Notes**:
-    - The earlier exploratory audit reported unweighted mean per-image coverage (15.98%) and median per-image coverage (12.78%) using `int(coord * dim)` integer truncation.
-    - Under `data_rules.py` `int(round(coord * dim))` rounding rasterization: Mean per-image is **15.98%** (identical), Median per-image is **12.76%** (delta -0.02% from rounding vs truncation).
-    - Because all 780 pothole images share identical 640x640 dimensions, the aggregate pixel-weighted fraction (15.9757%) is mathematically identical to the unweighted mean of individual per-image fractions.
+  - The Step 2 table could not be reproduced; the verified figures are from the reconciliation run (notebook 02).
 - **Mitigation for Class Imbalance**: Compound loss combining Binary Cross-Entropy with Soft Dice loss ($\text{Dice} = 1 - \frac{2|X \cap Y| + \epsilon}{|X| + |Y| + \epsilon}$) to prevent background collapse.
