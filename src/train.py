@@ -478,7 +478,8 @@ def run_full_training(
     weight_decay: float = 1e-4,
     batch_size: int = 8,
     samples_per_epoch: int = 600,
-    device: Optional[torch.device] = None
+    device: Optional[torch.device] = None,
+    save_weights: bool = True
 ) -> Tuple[nn.Module, List[dict], List[dict]]:
     """
     Runs full semantic segmentation baseline training with ablation capabilities:
@@ -487,6 +488,7 @@ def run_full_training(
     - loss_terms: 'bce+dice', 'bce', or 'dice'
     - seed: Random seed for reproducibility
     - output_dir: Destination for best.pt, last.pt, history.json, learning_curves.png
+    - save_weights: If True, writes best.pt and last.pt to disk; if False, keeps in memory
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -506,6 +508,7 @@ def run_full_training(
     print(f"  • Samples / Epoch:   {samples_per_epoch} (balanced: 200 per source)")
     print(f"  • Device:            {device}")
     print(f"  • Output Directory:  {output_dir}")
+    print(f"  • Save Weights:      {save_weights}")
 
     # Initialize model
     model = build_model(device)
@@ -557,6 +560,7 @@ def run_full_training(
     history = []
     best_score = -1.0
     best_epoch = -1
+    best_model_state = None
     t_start = time.time()
 
     print("\n" + "=" * 90)
@@ -591,14 +595,18 @@ def run_full_training(
         selection_score = (c500_dice + pot_dice) / 2.0
 
         # Save last checkpoint
-        torch.save(model.state_dict(), output_dir / 'last.pt')
+        if save_weights:
+            torch.save(model.state_dict(), output_dir / 'last.pt')
 
         is_best = False
         if selection_score > best_score:
             best_score = selection_score
             best_epoch = epoch
             is_best = True
-            torch.save(model.state_dict(), output_dir / 'best.pt')
+            if save_weights:
+                torch.save(model.state_dict(), output_dir / 'best.pt')
+            else:
+                best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
         record = {
             'epoch': epoch,
@@ -649,9 +657,12 @@ def run_full_training(
         print(f"{ep:<6d} | {rec['train_loss']:<11.5f} | {c500_d:<14.4f} | {rc_d:<15.4f} | {pot_d:<13.4f} | {rec['selection_score']:<11.4f} | {note}")
     print("-" * 90)
 
-    # Threshold sweep using best.pt on validation split only
-    print("\nLoading best model checkpoint ('best.pt') for validation threshold sweep...")
-    model.load_state_dict(torch.load(output_dir / 'best.pt', map_location=device))
+    # Threshold sweep using best checkpoint on validation split only
+    print("\nLoading best model checkpoint for validation threshold sweep...")
+    if save_weights and (output_dir / 'best.pt').exists():
+        model.load_state_dict(torch.load(output_dir / 'best.pt', map_location=device))
+    elif best_model_state is not None:
+        model.load_state_dict({k: v.to(device) for k, v in best_model_state.items()})
     sweep_results = run_threshold_sweep(model, val_loader, device, thresholds=[0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     print_threshold_table(sweep_results)
 
