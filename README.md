@@ -71,8 +71,13 @@ flowchart LR
     - Pothole ($N=60$): Dataset IoU 0.6805, Dataset Dice 0.8099, Mean Img Dice 0.7689
     - Road Crack ($N=68$): Dataset IoU 0.4495, Dataset Dice 0.6202, Mean Img Dice 0.5319 (Non-Empty Dice 0.6213 on 55 images; 2 / 13 clean images predicted empty).
   - Out-of-Domain RDD Test Audit ($N = 2,560$ images): Clean road false flag rate 27.50% at >1% (pothole) and 0.00% (crack); deep pothole box hit rate 35.42%. Documented as out-of-domain perspective limitation.
-  - Test Overlays: 8 qualitative overlays per source (including failure modes) saved in `outputs/test_eval/`.
-- [ ] **Step 4: Automated PCI Computation Module** (Severity deduction curves from predicted mask areas)
+- [x] **Step 4A: Mask-to-Feature Module & Human Labeling Sheet** *(Done)*:
+  - Feature Extractor: [`src/pavement_features.py`](src/pavement_features.py) with scale-normalized feature extraction (512 px shorter side), crack skeleton metrics (length, density, width, junctions, enclosed cells, network index), and pothole metrics (count, area fraction, largest pothole).
+  - Unit Test Suite: [`tests/test_features.py`](tests/test_features.py) (8/8 tests passing on synthetic lines, plus signs, grids, disks, speckles, empty masks, scale invariance).
+  - Feature Notebook: [`notebooks/13_features/`](notebooks/13_features/) ([`vedshah04/road-pci-intelligence-features-and-pci`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-features-and-pci)) running on CPU for ground-truth feature distributions and validation rank correlation with frozen model predictions.
+  - Human Labeling Sheet: [`scripts/make_pair_sheet.py`](scripts/make_pair_sheet.py) generating 60 blinded test pairs across 10 pages with [`labels/pairs_template.csv`](labels/pairs_template.csv) (Seed 42).
+  - Design Documentation: [`docs/pci_design.md`](docs/pci_design.md) documenting definitions, units, scale-invariance assumptions, and validation plans.
+- [ ] **Step 4B: Automated PCI Computation Module** (Severity deduction curves & composite index formulation)
 - [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
 - [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
 
@@ -85,6 +90,7 @@ road-pci-intelligence/
 ├── app/                  # Streamlit application UI and components
 ├── data/                 # Raw and processed datasets (git-ignored)
 ├── docs/                 # Architectural documentation & data decisions
+├── labels/               # Human pairwise preference labeling sheets & templates
 ├── manifests/            # Version-controlled CSV manifests for training & validation
 ├── notebooks/            # Isolated Jupyter/Kaggle notebook modules:
 │   ├── 01_data_exploration/     # Exploratory analysis notebook & metadata
@@ -98,10 +104,12 @@ road-pci-intelligence/
 │   ├── 08_rdd_cross_domain_abc/ # Combined RDD cross-domain evaluation (Models A, B, and C)
 │   ├── 09_seed_runs/            # Multi-seed training (Seeds 42, 43, 44)
 │   ├── 11_train_asymmetric_and_rdd_eval/ # Multi-seed asymmetric training & evaluation
-│   └── 12_final_eval/           # Frozen model test evaluation & out-of-domain audit
+│   ├── 12_final_eval/           # Frozen model test evaluation & out-of-domain audit
+│   └── 13_features/             # Pavement feature extraction & validation correlation
 ├── outputs/              # Model checkpoints, evaluation plots, and reports (git-ignored)
-├── src/                  # Core modular source code (rules, builders, models, PCI)
-├── tests/                # Automated unit test suite (manifest validation & leak checks)
+├── scripts/              # Utility scripts (make_pair_sheet, evaluation helpers)
+├── src/                  # Core modular source code (rules, builders, models, PCI, features)
+├── tests/                # Automated unit test suite (manifests, losses, features)
 ├── .gitignore            # Git ignore configuration
 ├── README.md             # Project overview and roadmap
 └── requirements.txt      # Project Python dependencies
