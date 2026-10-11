@@ -107,3 +107,58 @@ Evaluated via `notebooks/06_train_naive` loading `best.pt` (Epoch 30).
 | **Mean Img Dice (Only 38 Non-Empty Images)** | 0.5259 | 0.5274 |
 | **Dataset Dice (Pixel-accumulated)** | 0.3825 | 0.4379 |
 | **Dataset IoU (Pixel-accumulated)** | 0.2365 | 0.2803 |
+
+---
+
+## 6. Cross-Domain RDD2022ES Validation Check (Model A vs Model B)
+
+*Note: RDD bounding boxes are loose weak labels, so these are not Dice scores and not comparable to earlier segmentation numbers.*  
+Evaluated via `notebooks/08_rdd_cross_domain` across all 2,560 images of `rdd2022es` val split at threshold 0.5.
+
+### A. Images with ZERO Bounding Boxes (N = 788 images)
+
+| Model | Channel | Flag > 0.1% | Flag > 0.5% | Flag > 1.0% | Mean FG Fraction |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Model A (Masked)** | Crack | 34.39% (271) | 6.35% (50) | 1.27% (10) | 0.1288% |
+| **Model A (Masked)** | Pothole | 69.92% (551) | 56.85% (448) | 51.02% (402) | 5.2213% |
+| **Model B (Naive)** | Crack | 5.08% (40) | 0.76% (6) | 0.25% (2) | 0.0205% |
+| **Model B (Naive)** | Pothole | 43.53% (343) | 30.58% (241) | 22.21% (175) | 1.4874% |
+
+### B. Hit Rate & Box Pixel Coverage on Images with Ground-Truth Boxes
+
+#### Pothole Channel vs Pothole Boxes (N = 302 images, 498 boxes)
+| Model | Category | Images | Boxes | Hit Rate (≥ 5% Box Pixels) | Mean Box Fraction |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Model A (Masked)** | **All Potholes (6-7)** | 302 | 498 | 23.84% (72/302) | 7.66% |
+| Model A (Masked) | Class 6 | 282 | 434 | 19.50% (55/282) | 6.78% |
+| Model A (Masked) | Class 7 | 48 | 64 | 43.75% (21/48) | 13.57% |
+| **Model B (Naive)** | **All Potholes (6-7)** | 302 | 498 | 25.50% (77/302) | 10.10% |
+| Model B (Naive) | Class 6 | 282 | 434 | 21.28% (60/282) | 7.81% |
+| Model B (Naive) | Class 7 | 48 | 64 | 52.08% (25/48) | 25.65% |
+
+#### Crack Channel vs Crack Boxes (N = 1,650 images, 3,278 boxes)
+| Model | Category | Images | Boxes | Hit Rate (≥ 5% Box Pixels) | Mean Box Fraction |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Model A (Masked)** | **All Cracks (0-5)** | 1650 | 3278 | 6.24% (103/1650) | 0.56% |
+| Model A (Masked) | Class 0 (Longitudinal) | 932 | 1342 | 5.15% (48/932) | 0.50% |
+| Model A (Masked) | Class 1 (Transverse) | 206 | 242 | 12.14% (25/206) | 1.45% |
+| Model A (Masked) | Class 2 (Alligator) | 540 | 788 | 4.26% (23/540) | 0.38% |
+| Model A (Masked) | Class 3 | 80 | 86 | 12.50% (10/80) | 1.46% |
+| Model A (Masked) | Class 4 | 584 | 728 | 2.23% (13/584) | 0.47% |
+| Model A (Masked) | Class 5 | 88 | 92 | 2.27% (2/88) | 0.31% |
+| **Model B (Naive)** | **All Cracks (0-5)** | 1650 | 3278 | 8.73% (144/1650) | 0.72% |
+| Model B (Naive) | Class 0 (Longitudinal) | 932 | 1342 | 8.80% (82/932) | 0.81% |
+| Model B (Naive) | Class 1 (Transverse) | 206 | 242 | 16.02% (33/206) | 1.62% |
+| Model B (Naive) | Class 2 (Alligator) | 540 | 788 | 5.74% (31/540) | 0.65% |
+| Model B (Naive) | Class 3 | 80 | 86 | 21.25% (17/80) | 2.15% |
+| Model B (Naive) | Class 4 | 584 | 728 | 0.34% (2/584) | 0.23% |
+| Model B (Naive) | Class 5 | 88 | 92 | 1.14% (1/88) | 0.15% |
+
+### C. Cross-Channel Audit
+
+| Model | Image Subset | Evaluated Channel | Flag > 0.1% | Flag > 0.5% | Mean FG Fraction |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Model A (Masked)** | Only Crack Boxes (N = 1,470) | Pothole | 63.33% (931) | 39.12% (575) | 2.6762% |
+| **Model B (Naive)** | Only Crack Boxes (N = 1,470) | Pothole | 35.31% (519) | 22.38% (329) | 0.7491% |
+| **Model A (Masked)** | Only Pothole Boxes (N = 122) | Crack | 41.80% (51) | 9.02% (11) | 0.1418% |
+| **Model B (Naive)** | Only Pothole Boxes (N = 122) | Crack | 3.28% (4) | 0.00% (0) | 0.0135% |
