@@ -257,12 +257,12 @@ Evaluated across seeds 42, 43, 44 on validation splits at threshold 0.5 over 30 
 | | Road Crack Dice | 0.3952 ± 0.0110 | 0.4195 ± 0.0160 | 0.4265 ± 0.0085 | 0.3952 ± 0.0090 | 0.4195 ± 0.0131 | 0.4265 ± 0.0069 |
 | | Road Crack Non-Empty Dice | 0.5221 ± 0.0156 | 0.5296 ± 0.0027 | 0.5309 ± 0.0180 | 0.5221 ± 0.0127 | 0.5296 ± 0.0022 | 0.5309 ± 0.0147 |
 | | RC Empty Clean Count | 3.00 ± 0.00 | 10.67 ± 0.47 | 7.67 ± 2.08 | 3.00 ± 0.00 | 10.67 ± 0.38 | 7.67 ± 1.70 |
-| **Final Epoch 30** | Selection Score | 0.7022 ± 0.0025 | 0.7140 ± 0.0024 | 0.7107 ± 0.0151 | 0.7022 ± 0.0021 | 0.7140 ± 0.0019 | 0.7107 ± 0.0123 |
-| | CRACK500 Dice | 0.6605 ± 0.0029 | 0.6717 ± 0.0022 | 0.6716 ± 0.0031 | 0.6605 ± 0.0024 | 0.6717 ± 0.0018 | 0.6716 ± 0.0025 |
-| | Pothole Dice | 0.7440 ± 0.0079 | 0.7563 ± 0.0031 | 0.7498 ± 0.0281 | 0.7440 ± 0.0064 | 0.7563 ± 0.0025 | 0.7498 ± 0.0229 |
-| | Road Crack Dice | 0.3915 ± 0.0076 | 0.4357 ± 0.0106 | 0.4255 ± 0.0039 | 0.3915 ± 0.0062 | 0.4357 ± 0.0086 | 0.4255 ± 0.0032 |
-| | Road Crack Non-Empty Dice | 0.5224 ± 0.0119 | 0.5401 ± 0.0174 | 0.5484 ± 0.0139 | 0.5224 ± 0.0097 | 0.5401 ± 0.0142 | 0.5484 ± 0.0113 |
-| | RC Empty Clean Count | 3.33 ± 1.25 | 11.00 ± 0.82 | 10.00 ± 2.00 | 3.33 ± 1.02 | 11.00 ± 0.67 | 10.00 ± 1.63 |
+| **Final Epoch 30** | Selection Score | 0.7022 ± 0.0030 | 0.7140 ± 0.0029 | 0.7107 ± 0.0151 | 0.7022 ± 0.0025 | 0.7140 ± 0.0024 | 0.7107 ± 0.0123 |
+| | CRACK500 Dice | 0.6605 ± 0.0036 | 0.6717 ± 0.0027 | 0.6716 ± 0.0031 | 0.6605 ± 0.0029 | 0.6717 ± 0.0022 | 0.6716 ± 0.0025 |
+| | Pothole Dice | 0.7440 ± 0.0096 | 0.7563 ± 0.0038 | 0.7498 ± 0.0281 | 0.7440 ± 0.0079 | 0.7563 ± 0.0031 | 0.7498 ± 0.0229 |
+| | Road Crack Dice | 0.3915 ± 0.0093 | 0.4357 ± 0.0130 | 0.4255 ± 0.0039 | 0.3915 ± 0.0076 | 0.4357 ± 0.0106 | 0.4255 ± 0.0032 |
+| | Road Crack Non-Empty Dice | 0.5224 ± 0.0145 | 0.5401 ± 0.0214 | 0.5484 ± 0.0139 | 0.5224 ± 0.0119 | 0.5401 ± 0.0174 | 0.5484 ± 0.0113 |
+| | RC Empty Clean Count | 3.33 ± 1.53 | 11.00 ± 1.00 | 10.00 ± 2.00 | 3.33 ± 1.25 | 11.00 ± 0.82 | 10.00 ± 1.63 |
 
 ---
 
@@ -296,15 +296,41 @@ Evaluated across seeds 42, 43, 44 on validation splits at threshold 0.5 over 30 
 ### Multi-Seed Training (Seeds 42, 43, 44)
 - **Selection Score**: Across 3 seeds:
   - Best epoch: Masked 0.7083 ± 0.0058 (pop: ± 0.0048), Naive 0.7155 ± 0.0012 (pop: ± 0.0010), Asymmetric 0.7155 ± 0.0089 (pop: ± 0.0073).
-  - Final epoch 30: Masked 0.7022 ± 0.0025 (pop: ± 0.0021), Naive 0.7140 ± 0.0024 (pop: ± 0.0019), Asymmetric 0.7107 ± 0.0151 (pop: ± 0.0123).
+  - Final epoch 30: Masked 0.7022 ± 0.0030 (pop: ± 0.0025), Naive 0.7140 ± 0.0029 (pop: ± 0.0024), Asymmetric 0.7107 ± 0.0151 (pop: ± 0.0123).
 - **In-Domain Dice Scores**:
-  - CRACK500 (best epoch): Masked 0.6606 ± 0.0029, Naive 0.6695 ± 0.0053, Asymmetric 0.6693 ± 0.0062; (final epoch 30): Masked 0.6605 ± 0.0029, Naive 0.6717 ± 0.0022, Asymmetric 0.6716 ± 0.0031.
-  - Pothole (best epoch): Masked 0.7560 ± 0.0136, Naive 0.7615 ± 0.0060, Asymmetric 0.7617 ± 0.0119; (final epoch 30): Masked 0.7440 ± 0.0079, Naive 0.7563 ± 0.0031, Asymmetric 0.7498 ± 0.0281.
-  - Road Crack overall (best epoch): Masked 0.3952 ± 0.0110, Naive 0.4195 ± 0.0160, Asymmetric 0.4265 ± 0.0085; (final epoch 30): Masked 0.3915 ± 0.0076, Naive 0.4357 ± 0.0106, Asymmetric 0.4255 ± 0.0039.
+  - CRACK500 (best epoch): Masked 0.6606 ± 0.0029, Naive 0.6695 ± 0.0053, Asymmetric 0.6693 ± 0.0062; (final epoch 30): Masked 0.6605 ± 0.0036, Naive 0.6717 ± 0.0027, Asymmetric 0.6716 ± 0.0031.
+  - Pothole (best epoch): Masked 0.7560 ± 0.0136, Naive 0.7615 ± 0.0060, Asymmetric 0.7617 ± 0.0119; (final epoch 30): Masked 0.7440 ± 0.0096, Naive 0.7563 ± 0.0038, Asymmetric 0.7498 ± 0.0281.
+  - Road Crack overall (best epoch): Masked 0.3952 ± 0.0110, Naive 0.4195 ± 0.0160, Asymmetric 0.4265 ± 0.0085; (final epoch 30): Masked 0.3915 ± 0.0093, Naive 0.4357 ± 0.0130, Asymmetric 0.4255 ± 0.0039.
 - **Road Crack Non-Empty vs Clean Counts**:
   - On the 38 non-empty road_crack val images:
     - Best epoch Dice: Masked 0.5221 ± 0.0156, Naive 0.5296 ± 0.0027, Asymmetric 0.5309 ± 0.0180.
-    - Final epoch 30 Dice: Masked 0.5224 ± 0.0119, Naive 0.5401 ± 0.0174, Asymmetric 0.5484 ± 0.0139.
+    - Final epoch 30 Dice: Masked 0.5224 ± 0.0145, Naive 0.5401 ± 0.0214, Asymmetric 0.5484 ± 0.0139.
   - Out of the 39 clean empty road_crack val images, images receiving exactly 0 predicted pixels at threshold 0.5:
     - Best epoch: Masked 3.00 ± 0.00 (7.7%), Naive 10.67 ± 0.47 (27.4%), Asymmetric 7.67 ± 2.08 (19.7%).
-    - Final epoch 30: Masked 3.33 ± 1.25 (8.5%), Naive 11.00 ± 0.82 (28.2%), Asymmetric 10.00 ± 2.00 (25.6%).
+    - Final epoch 30: Masked 3.33 ± 1.53 (8.5%), Naive 11.00 ± 1.00 (28.2%), Asymmetric 10.00 ± 2.00 (25.6%).
+
+---
+
+## 9. Decision: Selection of Frozen Model
+
+**Pre-registered Selection Rule**:
+> Model C (Asymmetric Loss) is chosen as the official model only if its mean validation Dice is within 0.01 of Model B (Naive Multi-Task Loss) AND its pothole flag rate on clean RDD roads at >1% foreground is lower than Model B's; otherwise, Model B (Naive Multi-Task Loss) is retained.
+
+**Empirical Result**:
+- Selection Metric (Mean Val Dice: CRACK500 + Pothole):
+  - Model B (Seed 42 Best / Final Ep 30): 0.7140
+  - Model C (Seed 42 Best Ep 29): 0.7219 / (Seed 42 Final Ep 30): 0.7195
+  - Multi-seed final epoch means (ddof=1): Model B 0.7140 ± 0.0029 vs Model C 0.7107 ± 0.0151.
+  - The mean validation Dice difference satisfies $|B - C| \le 0.01$.
+- Clean RDD Roads ($N = 788$ zero-box images) Pothole Flag Rate (>1.0% foreground):
+  - Model B (Naive): **22.21%** (175 / 788 images)
+  - Model C (Asymmetric): **27.66%** (218 / 788 images)
+- Clean RDD Roads ($N = 788$ zero-box images) Pothole Flag Rate (>0.1% foreground):
+  - Model B (Naive): **43.53%** (343 / 788 images)
+  - Model C (Asymmetric): **47.21%** (372 / 788 images)
+
+**Decision**:
+Model C did not achieve a lower pothole false flag rate on clean RDD roads compared to Model B (27.66% vs 22.21% at >1% foreground; 47.21% vs 43.53% at >0.1% foreground). Therefore, according to the pre-registered decision rule, **Model B (Naive Multi-Task Loss, Run B, Seed 42, Epoch 30)** is selected and frozen as the official segmentation model.
+
+*Hypothesis on Negative Supervision*: The hypothesis that treating un-annotated channels as negative supervision suppresses false positive activations across single-source datasets is supported on clean RDD zero-box roads where Model B substantially reduced false positives relative to Model A (43.53% vs 69.92% at >0.1%), but this remains a working hypothesis subject to domain limitations, as non-pavement artifacts in forward-facing dashcam perspectives still induce significant false activations across all model configurations.
+
