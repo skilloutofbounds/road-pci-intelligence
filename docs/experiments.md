@@ -334,3 +334,74 @@ Model C did not achieve a lower pothole false flag rate on clean RDD roads compa
 
 *Hypothesis on Negative Supervision*: The hypothesis that treating un-annotated channels as negative supervision suppresses false positive activations across single-source datasets is supported on clean RDD zero-box roads where Model B substantially reduced false positives relative to Model A (43.53% vs 69.92% at >0.1%), but this remains a working hypothesis subject to domain limitations, as non-pavement artifacts in forward-facing dashcam perspectives still induce significant false activations across all model configurations.
 
+---
+
+## 10. Final Model Freezing, Test Evaluation & Out-of-Domain RDD Test Audit
+
+### 10.1 Frozen Model Weights & Verification
+- **Architecture**: SMP U-Net with ResNet-34 encoder (ImageNet pretrained), 2 independent sigmoid outputs (`crack`, `pothole`).
+- **Checkpoint Source**: Run B (Naive Multi-Task Loss, Seed 42, Epoch 30 = Best Epoch).
+- **Kaggle Dataset**: [`vedshah04/road-pci-seg-final-weights`](https://www.kaggle.com/datasets/vedshah04/road-pci-seg-final-weights) containing `best.pt` and `model_card.md`.
+- **Integrity Verification**:
+  - File size: 97,904,319 bytes
+  - SHA-256 Checksum: `9269c5edb6e5d37b359bd3337fbd83c60901cd2b241f9ef789e9116fee400ef7` (verified locally and inside Kaggle environment).
+  - Trainable parameters: 24,436,514 (strict match, 0 missing, 0 unexpected).
+
+### 10.2 Validation Test-Time Augmentation (TTA) Sweep
+Evaluated on the full validation split ($N = 255$ images: CRACK500 70, Pothole 108, Road Crack 77) at threshold 0.5:
+- **Pre-registered rule**: Use flip TTA (average of original, horizontal flip, and vertical flip: sigmoid then mean) as the official setting only if mean validation Dice across CRACK500 and Pothole improves by $\ge 0.0050$; otherwise use No-TTA.
+
+| Setting | Mean Val Dice (C500 + Pot) | CRACK500 Val Dice | Pothole Val Dice | Road Crack Val Dice |
+| :--- | :--- | :--- | :--- | :--- |
+| **No-TTA** | 0.7140 | 0.6734 | 0.7546 | 0.4379 |
+| **Flip-TTA** | **0.7204** | **0.6768** | **0.7640** | **0.4707** |
+| **Delta** | **+0.00637** | +0.0034 | +0.0094 | +0.0328 |
+
+**Outcome**: Delta $= +0.00637 \ge +0.00500$. Therefore, **Flip-TTA is adopted as the OFFICIAL evaluation setting**.
+
+### 10.3 Official Test Split Evaluation (Evaluated ONCE, N = 200 images, Threshold 0.5)
+Evaluated once in [`notebooks/12_final_eval/`](notebooks/12_final_eval/) without tuning or modification:
+
+| Setting | Source | N Img | Dataset IoU | Dataset Dice | Mean Img Dice | Non-Empty Dice | Empty Clean |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| No-TTA | crack500 | 72 | 0.4877 | 0.6557 | 0.6504 | N/A | N/A |
+| No-TTA | pothole | 60 | 0.6682 | 0.8011 | 0.7590 | N/A | N/A |
+| No-TTA | road_crack | 68 | 0.4381 | 0.6093 | 0.5242 | 0.6117 (55) | 2 / 13 |
+| **Flip-TTA [OFFICIAL]** | **crack500** | **72** | **0.4923** | **0.6597** | **0.6545** | N/A | N/A |
+| **Flip-TTA [OFFICIAL]** | **pothole** | **60** | **0.6805** | **0.8099** | **0.7689** | N/A | N/A |
+| **Flip-TTA [OFFICIAL]** | **road_crack** | **68** | **0.4495** | **0.6202** | **0.5319** | **0.6213 (55)** | **2 / 13** |
+
+*Note on Road-Crack Empty Clean*: Out of 13 ground-truth empty test images in the road-crack test split, 2 images received exactly 0 predicted pixels at threshold 0.5. The non-empty mean per-image Dice over the 55 non-empty test images was 0.6213 (Flip-TTA).
+
+### 10.4 Out-of-Domain Cross-Domain Check: RDD2022ES Test Split ($N = 2,560$ images)
+> **DISCLAIMER**: The following RDD2022ES test metrics represent an out-of-domain failure mode analysis documenting the domain shift between close-up pavement photography and forward-facing dashcam perspectives. They are strictly an empirical limitation analysis and NOT a competitive performance claim.
+
+**Inference Protocol**: Full-resolution image padded to multiple of 32, sigmoid per channel, threshold 0.5.
+
+#### A. Zero-Box Images ($N = 800$ completely clean test images)
+| Channel | Flag > 0.1% | Flag > 0.5% | Flag > 1.0% | Mean FG Fraction |
+| :--- | :--- | :--- | :--- | :--- |
+| **Crack** | 5.12% (41 / 800) | 0.62% (5 / 800) | 0.00% (0 / 800) | 0.0197% |
+| **Pothole** | 45.62% (365 / 800) | 32.50% (260 / 800) | 27.50% (220 / 800) | 2.0568% |
+
+#### B. Distress Box Hit Rate ($\ge 5\%$ Box Pixels Predicted) & Box Pixel Coverage
+| Target Distress Class | N Images | N Boxes | Image Hit Rate ($\ge 5\%$) | Mean Box Pixel Fraction |
+| :--- | :--- | :--- | :--- | :--- |
+| **All Potholes (Classes 6-7)** | **280** | **432** | **19.29% (54 / 280)** | **6.66%** |
+| - Class 6 (`pothole`) | 260 | 384 | 16.15% (42 / 260) | 5.70% |
+| - Class 7 (`pothole deep`) | 48 | 48 | 35.42% (17 / 48) | 14.32% |
+| **All Cracks (Classes 0-5)** | **1,650** | **3,196** | **8.48% (140 / 1,650)** | **0.71%** |
+| - Class 0 (`longitudinal`) | 916 | 1,336 | 7.75% (71 / 916) | 0.77% |
+| - Class 1 (`longitudinal wide`) | 218 | 246 | 13.30% (29 / 218) | 1.71% |
+| - Class 2 (`transverse`) | 510 | 720 | 8.04% (41 / 510) | 0.68% |
+| - Class 3 (`transverse wide`) | 78 | 84 | 24.36% (19 / 78) | 2.69% |
+| - Class 4 (`alligator`) | 576 | 708 | 0.17% (1 / 576) | 0.12% |
+| - Class 5 (`alligator sunken`) | 98 | 102 | 0.00% (0 / 98) | 0.14% |
+
+#### C. Cross-Channel Audit
+| Image Condition | Evaluated Channel | Flag > 0.1% | Flag > 0.5% | Mean FG Fraction |
+| :--- | :--- | :--- | :--- | :--- |
+| **Images with ONLY Crack Boxes ($N = 1,480$)** | Pothole | 34.12% (505 / 1,480) | 22.30% (330 / 1,480) | 0.9066% |
+| **Images with ONLY Pothole Boxes ($N = 110$)** | Crack | 3.64% (4 / 110) | 0.00% (0 / 110) | 0.0121% |
+
+

@@ -61,6 +61,17 @@ flowchart LR
   - Asymmetric loss mode implementation (`src/losses.py`) with complete unit test suite (`tests/test_losses.py`).
   - Multi-seed asymmetric training (Seeds 42, 43, 44; 30 epochs each): [`vedshah04/road-pci-intelligence-asymmetric-runs`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-asymmetric-runs) ([`notebooks/11_train_asymmetric_and_rdd_eval/`](notebooks/11_train_asymmetric_and_rdd_eval/)).
   - Combined Cross-Domain RDD2022ES Evaluation (Models A, B, C on 2,560 validation images): [`vedshah04/road-pci-intelligence-rdd-cross-domain-eval-abc`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-rdd-cross-domain-eval-abc) ([`notebooks/08_rdd_cross_domain_abc/`](notebooks/08_rdd_cross_domain_abc/)).
+- [x] **Step 3E: Segmentation Model Freeze, Official Test Evaluation & Cross-Domain Audit** *(Done)*:
+  - Evaluation Notebook: [`vedshah04/road-pci-intelligence-final-evaluation`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-final-evaluation) ([`notebooks/12_final_eval/`](notebooks/12_final_eval/))
+  - Frozen Model: Model B (Naive Multi-Task Loss, Run B, Seed 42, Epoch 30).
+  - Weights & Model Card: Private Kaggle Dataset [`vedshah04/road-pci-seg-final-weights`](https://www.kaggle.com/datasets/vedshah04/road-pci-seg-final-weights) (SHA-256: `9269c5edb6e5d37b359bd3337fbd83c60901cd2b241f9ef789e9116fee400ef7`, 24,436,514 parameters).
+  - Validation TTA Sweep: Flip-TTA improved validation Dice by +0.00637 ($\ge 0.0050$ threshold) $\rightarrow$ Adopted as Official Setting.
+  - Test Split Evaluation (Evaluated ONCE, N = 200 images, threshold 0.5):
+    - CRACK500 ($N=72$): Dataset IoU 0.4923, Dataset Dice 0.6597, Mean Img Dice 0.6545
+    - Pothole ($N=60$): Dataset IoU 0.6805, Dataset Dice 0.8099, Mean Img Dice 0.7689
+    - Road Crack ($N=68$): Dataset IoU 0.4495, Dataset Dice 0.6202, Mean Img Dice 0.5319 (Non-Empty Dice 0.6213 on 55 images; 2 / 13 clean images predicted empty).
+  - Out-of-Domain RDD Test Audit ($N = 2,560$ images): Clean road false flag rate 27.50% at >1% (pothole) and 0.00% (crack); deep pothole box hit rate 35.42%. Documented as out-of-domain perspective limitation.
+  - Test Overlays: 8 qualitative overlays per source (including failure modes) saved in `outputs/test_eval/`.
 - [ ] **Step 4: Automated PCI Computation Module** (Severity deduction curves from predicted mask areas)
 - [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
 - [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
@@ -86,7 +97,8 @@ road-pci-intelligence/
 │   ├── 08_rdd_cross_domain/     # RDD cross-domain evaluation (Models A and B)
 │   ├── 08_rdd_cross_domain_abc/ # Combined RDD cross-domain evaluation (Models A, B, and C)
 │   ├── 09_seed_runs/            # Multi-seed training (Seeds 42, 43, 44)
-│   └── 11_train_asymmetric_and_rdd_eval/ # Multi-seed asymmetric training & evaluation
+│   ├── 11_train_asymmetric_and_rdd_eval/ # Multi-seed asymmetric training & evaluation
+│   └── 12_final_eval/           # Frozen model test evaluation & out-of-domain audit
 ├── outputs/              # Model checkpoints, evaluation plots, and reports (git-ignored)
 ├── src/                  # Core modular source code (rules, builders, models, PCI)
 ├── tests/                # Automated unit test suite (manifest validation & leak checks)
