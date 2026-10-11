@@ -1,0 +1,20 @@
+{
+  "id": "vedshah04/road-pci-intelligence-rdd-cross-domain",
+  "title": "Road PCI Intelligence - RDD Cross Domain",
+  "code_file": "08_rdd_cross_domain.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [
+    "juusos/rdd2022es"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [
+    "vedshah04/road-pci-intelligence-train-masked-run-a",
+    "vedshah04/road-pci-intelligence-train-naive-run-b"
+  ],
+  "model_sources": []
+}
