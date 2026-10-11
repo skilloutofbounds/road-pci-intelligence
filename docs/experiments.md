@@ -130,29 +130,29 @@ Evaluated via `notebooks/08_rdd_cross_domain` across all 2,560 images of `rdd202
 | Model | Category | Images | Boxes | Hit Rate (≥ 5% Box Pixels) | Mean Box Fraction |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Model A (Masked)** | **All Potholes (6-7)** | 302 | 498 | 23.84% (72/302) | 7.66% |
-| Model A (Masked) | Class 6 | 282 | 434 | 19.50% (55/282) | 6.78% |
-| Model A (Masked) | Class 7 | 48 | 64 | 43.75% (21/48) | 13.57% |
+| Model A (Masked) | Class 6 (pothole) | 282 | 434 | 19.50% (55/282) | 6.78% |
+| Model A (Masked) | Class 7 (pothole deep) | 48 | 64 | 43.75% (21/48) | 13.57% |
 | **Model B (Naive)** | **All Potholes (6-7)** | 302 | 498 | 25.50% (77/302) | 10.10% |
-| Model B (Naive) | Class 6 | 282 | 434 | 21.28% (60/282) | 7.81% |
-| Model B (Naive) | Class 7 | 48 | 64 | 52.08% (25/48) | 25.65% |
+| Model B (Naive) | Class 6 (pothole) | 282 | 434 | 21.28% (60/282) | 7.81% |
+| Model B (Naive) | Class 7 (pothole deep) | 48 | 64 | 52.08% (25/48) | 25.65% |
 
 #### Crack Channel vs Crack Boxes (N = 1,650 images, 3,278 boxes)
 | Model | Category | Images | Boxes | Hit Rate (≥ 5% Box Pixels) | Mean Box Fraction |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Model A (Masked)** | **All Cracks (0-5)** | 1650 | 3278 | 6.24% (103/1650) | 0.56% |
-| Model A (Masked) | Class 0 (Longitudinal) | 932 | 1342 | 5.15% (48/932) | 0.50% |
-| Model A (Masked) | Class 1 (Transverse) | 206 | 242 | 12.14% (25/206) | 1.45% |
-| Model A (Masked) | Class 2 (Alligator) | 540 | 788 | 4.26% (23/540) | 0.38% |
-| Model A (Masked) | Class 3 | 80 | 86 | 12.50% (10/80) | 1.46% |
-| Model A (Masked) | Class 4 | 584 | 728 | 2.23% (13/584) | 0.47% |
-| Model A (Masked) | Class 5 | 88 | 92 | 2.27% (2/88) | 0.31% |
+| Model A (Masked) | Class 0 (longitudinal) | 932 | 1342 | 5.15% (48/932) | 0.50% |
+| Model A (Masked) | Class 1 (longitudinal wide) | 206 | 242 | 12.14% (25/206) | 1.45% |
+| Model A (Masked) | Class 2 (transverse) | 540 | 788 | 4.26% (23/540) | 0.38% |
+| Model A (Masked) | Class 3 (transverse wide) | 80 | 86 | 12.50% (10/80) | 1.46% |
+| Model A (Masked) | Class 4 (alligator) | 584 | 728 | 2.23% (13/584) | 0.47% |
+| Model A (Masked) | Class 5 (alligator sunken) | 88 | 92 | 2.27% (2/88) | 0.31% |
 | **Model B (Naive)** | **All Cracks (0-5)** | 1650 | 3278 | 8.73% (144/1650) | 0.72% |
-| Model B (Naive) | Class 0 (Longitudinal) | 932 | 1342 | 8.80% (82/932) | 0.81% |
-| Model B (Naive) | Class 1 (Transverse) | 206 | 242 | 16.02% (33/206) | 1.62% |
-| Model B (Naive) | Class 2 (Alligator) | 540 | 788 | 5.74% (31/540) | 0.65% |
-| Model B (Naive) | Class 3 | 80 | 86 | 21.25% (17/80) | 2.15% |
-| Model B (Naive) | Class 4 | 584 | 728 | 0.34% (2/584) | 0.23% |
-| Model B (Naive) | Class 5 | 88 | 92 | 1.14% (1/88) | 0.15% |
+| Model B (Naive) | Class 0 (longitudinal) | 932 | 1342 | 8.80% (82/932) | 0.81% |
+| Model B (Naive) | Class 1 (longitudinal wide) | 206 | 242 | 16.02% (33/206) | 1.62% |
+| Model B (Naive) | Class 2 (transverse) | 540 | 788 | 5.74% (31/540) | 0.65% |
+| Model B (Naive) | Class 3 (transverse wide) | 80 | 86 | 21.25% (17/80) | 2.15% |
+| Model B (Naive) | Class 4 (alligator) | 584 | 728 | 0.34% (2/584) | 0.23% |
+| Model B (Naive) | Class 5 (alligator sunken) | 88 | 92 | 1.14% (1/88) | 0.15% |
 
 ### C. Cross-Channel Audit
 

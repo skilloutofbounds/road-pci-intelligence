@@ -1,0 +1,23 @@
+{
+  "id": "vedshah04/road-pci-intelligence-asymmetric-runs",
+  "title": "Road PCI Intelligence - Asymmetric Runs",
+  "code_file": "11_train_asymmetric_and_rdd_eval.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [
+    "juusos/rdd2022es",
+    "farzadnekouei/pothole-image-segmentation-dataset",
+    "rukiyeaydn/road-crack-dataset",
+    "sj26717/crack500"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [
+    "vedshah04/road-pci-intelligence-train-masked-run-a",
+    "vedshah04/road-pci-intelligence-train-naive-run-b"
+  ],
+  "model_sources": []
+}
