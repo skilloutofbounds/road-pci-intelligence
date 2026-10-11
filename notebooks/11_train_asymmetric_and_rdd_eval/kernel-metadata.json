@@ -1,6 +1,6 @@
 {
   "id": "vedshah04/road-pci-intelligence-asymmetric-runs",
-  "title": "Road PCI Intelligence - Asymmetric Runs",
+  "title": "Road PCI Intelligence - Asymmetric Runs and RDD Eval",
   "code_file": "11_train_asymmetric_and_rdd_eval.ipynb",
   "language": "python",
   "kernel_type": "notebook",

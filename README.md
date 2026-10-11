@@ -49,7 +49,18 @@ flowchart LR
   - Sanity Check 2 Overfit Test: Achieved **0.9601** Mean Dice on 8 samples (crack500: 0.9389, road_crack: 0.9509, pothole: 0.9906), well exceeding the > 0.85 target.
   - Sanity Check 3 Smoke Test: 3 full epochs completed with augmentation, AMP, and cosine decay (Epoch 3 train loss: 1.8012, mean val Dice: 0.4348).
   - Sanity Check 4: Saved 6 validation prediction overlays per source (`image | ground truth | prediction`) with clean titles.
-- [ ] **Step 3B: Full Deep Semantic Segmentation Training & Convergence** (Extended epochs, learning rate tuning, best checkpoint tracking)
+- [x] **Step 3B: Baseline Training & Loss Mode Ablation** *(Done)*:
+  - Masked Multi-Task Baseline (Run A, Seed 42, 30 epochs): [`vedshah04/road-pci-intelligence-train-masked-run-a`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-train-masked-run-a) ([`notebooks/05_train_masked/`](notebooks/05_train_masked/))
+  - Naive All-Zero Negative Baseline (Run B, Seed 42, 30 epochs): [`vedshah04/road-pci-intelligence-train-naive-run-b`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-train-naive-run-b) ([`notebooks/06_train_naive/`](notebooks/06_train_naive/))
+  - Comprehensive threshold sweep across $\{0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9\}$ ([`notebooks/07_eval_threshold_sweep/`](notebooks/07_eval_threshold_sweep/)).
+- [x] **Step 3C: Cross-Domain Evaluation & Multi-Seed Benchmarking** *(Done)*:
+  - Cross-Domain RDD2022ES Check (Models A & B on 2,560 validation images, threshold 0.5): [`vedshah04/road-pci-intelligence-rdd-cross-domain`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-rdd-cross-domain) ([`notebooks/08_rdd_cross_domain/`](notebooks/08_rdd_cross_domain/))
+  - Multi-seed runs across seeds 42, 43, 44 ([`notebooks/09_seed_runs/`](notebooks/09_seed_runs/)).
+- [x] **Step 3D: Asymmetric Partial Supervision, Exhaustive Box Statistics & Combined Evaluation** *(Done)*:
+  - Exhaustive RDD box statistics across all 25,599 label files (16 threads).
+  - Asymmetric loss mode implementation (`src/losses.py`) with complete unit test suite (`tests/test_losses.py`).
+  - Multi-seed asymmetric training (Seeds 42, 43, 44; 30 epochs each): [`vedshah04/road-pci-intelligence-asymmetric-runs`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-asymmetric-runs) ([`notebooks/11_train_asymmetric_and_rdd_eval/`](notebooks/11_train_asymmetric_and_rdd_eval/)).
+  - Combined Cross-Domain RDD2022ES Evaluation (Models A, B, C on 2,560 validation images): [`vedshah04/road-pci-intelligence-rdd-cross-domain-eval-abc`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-rdd-cross-domain-eval-abc) ([`notebooks/08_rdd_cross_domain_abc/`](notebooks/08_rdd_cross_domain_abc/)).
 - [ ] **Step 4: Automated PCI Computation Module** (Severity deduction curves from predicted mask areas)
 - [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
 - [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
@@ -68,7 +79,14 @@ road-pci-intelligence/
 │   ├── 01_data_exploration/     # Exploratory analysis notebook & metadata
 │   ├── 02_manifest_and_loader/  # Manifest builder & reconciliation notebook & metadata
 │   ├── 03_build_rdd_manifest/   # 16-worker parallel RDD manifest builder & metadata
-│   └── 04_train_baseline/       # Training pipeline, sanity checks & smoke test
+│   ├── 04_train_baseline/       # Training pipeline, sanity checks & smoke test
+│   ├── 05_train_masked/         # Run A (Masked multi-task loss baseline, 30 epochs)
+│   ├── 06_train_naive/          # Run B (Naive all-zero negative loss baseline, 30 epochs)
+│   ├── 07_eval_threshold_sweep/ # Validation decision threshold sweep (0.3 to 0.9)
+│   ├── 08_rdd_cross_domain/     # RDD cross-domain evaluation (Models A and B)
+│   ├── 08_rdd_cross_domain_abc/ # Combined RDD cross-domain evaluation (Models A, B, and C)
+│   ├── 09_seed_runs/            # Multi-seed training (Seeds 42, 43, 44)
+│   └── 11_train_asymmetric_and_rdd_eval/ # Multi-seed asymmetric training & evaluation
 ├── outputs/              # Model checkpoints, evaluation plots, and reports (git-ignored)
 ├── src/                  # Core modular source code (rules, builders, models, PCI)
 ├── tests/                # Automated unit test suite (manifest validation & leak checks)
