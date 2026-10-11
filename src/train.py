@@ -479,16 +479,18 @@ def run_full_training(
     batch_size: int = 8,
     samples_per_epoch: int = 600,
     device: Optional[torch.device] = None,
-    save_weights: bool = True
+    save_weights: bool = True,
+    save_last_only: bool = False
 ) -> Tuple[nn.Module, List[dict], List[dict]]:
     """
     Runs full semantic segmentation baseline training with ablation capabilities:
     - epochs: Number of training epochs (default 30)
-    - loss_mode: 'masked' (multi-task partial supervision) or 'naive' (all-zero negative targets)
+    - loss_mode: 'masked' (multi-task partial supervision), 'naive' (all-zero negative targets), or 'asymmetric'
     - loss_terms: 'bce+dice', 'bce', or 'dice'
     - seed: Random seed for reproducibility
     - output_dir: Destination for best.pt, last.pt, history.json, learning_curves.png
     - save_weights: If True, writes best.pt and last.pt to disk; if False, keeps in memory
+    - save_last_only: If True, saves last.pt only on final epoch (keeps best weights in memory)
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -508,7 +510,7 @@ def run_full_training(
     print(f"  • Samples / Epoch:   {samples_per_epoch} (balanced: 200 per source)")
     print(f"  • Device:            {device}")
     print(f"  • Output Directory:  {output_dir}")
-    print(f"  • Save Weights:      {save_weights}")
+    print(f"  • Save Weights:      {save_weights} (save_last_only: {save_last_only})")
 
     # Initialize model
     model = build_model(device)
@@ -595,7 +597,7 @@ def run_full_training(
         selection_score = (c500_dice + pot_dice) / 2.0
 
         # Save last checkpoint
-        if save_weights:
+        if save_weights or (save_last_only and epoch == epochs):
             torch.save(model.state_dict(), output_dir / 'last.pt')
 
         is_best = False
@@ -603,7 +605,7 @@ def run_full_training(
             best_score = selection_score
             best_epoch = epoch
             is_best = True
-            if save_weights:
+            if save_weights and not save_last_only:
                 torch.save(model.state_dict(), output_dir / 'best.pt')
             else:
                 best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}

@@ -73,8 +73,12 @@ class MaskedMultiTaskLoss(nn.Module):
         smooth: float = 1.0
     ):
         super().__init__()
-        assert loss_mode in ('masked', 'naive'), f"Unknown loss_mode: {loss_mode}. Must be 'masked' or 'naive'."
-        assert loss_terms in ('bce+dice', 'bce', 'dice'), f"Unknown loss_terms: {loss_terms}. Must be 'bce+dice', 'bce', or 'dice'."
+        assert loss_mode in ('masked', 'naive', 'asymmetric'), (
+            f"Unknown loss_mode: {loss_mode}. Must be 'masked', 'naive', or 'asymmetric'."
+        )
+        assert loss_terms in ('bce+dice', 'bce', 'dice'), (
+            f"Unknown loss_terms: {loss_terms}. Must be 'bce+dice', 'bce', or 'dice'."
+        )
         
         self.loss_mode = loss_mode
         self.loss_terms = loss_terms
@@ -119,6 +123,15 @@ class MaskedMultiTaskLoss(nn.Module):
             if self.loss_mode == 'naive':
                 # In naive mode, supervise all samples in batch; unlabeled channels are all zeros
                 valid_idx = torch.arange(B, device=device)
+            elif self.loss_mode == 'asymmetric':
+                if c == 0:
+                    # Crack channel: supervised on crack500 and road_crack; NOT on pothole images
+                    valid_idx = torch.where(label_mask[:, 0] > 0.5)[0]
+                elif c == 1:
+                    # Pothole channel: supervised on pothole images AND as all-zero negative on crack500 / road_crack
+                    valid_idx = torch.arange(B, device=device)
+                else:
+                    valid_idx = torch.where(label_mask[:, c] > 0.5)[0]
             else:
                 # In masked mode, supervise only samples with positive label mask
                 valid_idx = torch.where(label_mask[:, c] > 0.5)[0]

@@ -180,6 +180,137 @@ class TestMaskedLosses(unittest.TestCase):
         self.assertEqual(loss_dice.dice_weight, 1.0)
         print("[PASS] (f) Configurable loss terms ('bce+dice', 'bce', 'dice') verified.")
 
+    def test_07_asymmetric_pothole_sample_zero_gradient_on_crack_logits(self):
+        """
+        (a) In 'asymmetric' mode, a pothole-source sample gives exactly zero gradient on the crack logits.
+        """
+        loss_fn = MaskedMultiTaskLoss(loss_mode='asymmetric')
+        
+        logits = torch.randn(1, 2, 16, 16, requires_grad=True)
+        # Crack target set to 1s to verify it is masked out
+        targets = torch.zeros(1, 2, 16, 16)
+        targets[0, 0, :, :] = 1.0
+        targets[0, 1, 4:8, 4:8] = 1.0  # Pothole label
+        
+        # Pothole-source sample: crack=0, pothole=1
+        label_mask = torch.tensor([[0.0, 1.0]])
+        
+        loss, loss_dict = loss_fn(logits, targets, label_mask)
+        loss.backward()
+        
+        crack_grad = logits.grad[0, 0, :, :]
+        pothole_grad = logits.grad[0, 1, :, :]
+        
+        self.assertTrue(
+            torch.all(crack_grad == 0.0).item(),
+            f"Expected zero grad on crack logits, got max abs: {crack_grad.abs().max().item()}"
+        )
+        self.assertGreater(
+            pothole_grad.abs().max().item(), 0.0,
+            "Expected non-zero grad on pothole logits for pothole sample."
+        )
+        self.assertEqual(loss_dict['loss_crack_bce'], 0.0)
+        self.assertEqual(loss_dict['loss_crack_dice'], 0.0)
+        print("[PASS] (a) Asymmetric mode: pothole sample gives zero gradient on crack logits.")
+
+    def test_08_asymmetric_crack_sample_nonzero_gradient_on_pothole_logits(self):
+        """
+        (b) In 'asymmetric' mode, a crack-source sample gives non-zero gradient on the pothole logits,
+        equal to the loss against an all-zero target.
+        """
+        loss_fn = MaskedMultiTaskLoss(loss_mode='asymmetric')
+        
+        logits = torch.randn(1, 2, 16, 16, requires_grad=True)
+        targets = torch.zeros(1, 2, 16, 16)
+        targets[0, 0, 2:6, 2:6] = 1.0  # Crack ground truth
+        targets[0, 1, :, :] = 0.0  # Pothole is all zeros
+        
+        # Crack-source sample: crack=1, pothole=0
+        label_mask = torch.tensor([[1.0, 0.0]])
+        
+        loss, loss_dict = loss_fn(logits, targets, label_mask)
+        loss.backward()
+        
+        crack_grad = logits.grad[0, 0, :, :]
+        pothole_grad = logits.grad[0, 1, :, :]
+        
+        # Verify pothole gradient is non-zero
+        self.assertGreater(
+            pothole_grad.abs().max().item(), 0.0,
+            "Expected non-zero gradient on pothole logits for crack sample in asymmetric mode."
+        )
+        
+        # Independently compute loss on pothole logits against all-zero target
+        pothole_logits = logits[0:1, 1:2, :, :].detach().clone().requires_grad_(True)
+        zero_target = torch.zeros_like(pothole_logits)
+        
+        expected_bce = F.binary_cross_entropy_with_logits(pothole_logits[:, 0], zero_target[:, 0])
+        expected_dice = soft_dice_loss(torch.sigmoid(pothole_logits[:, 0]), zero_target[:, 0], smooth=loss_fn.smooth)
+        expected_pothole_loss = expected_bce + expected_dice
+        expected_pothole_loss.backward()
+        
+        self.assertAlmostEqual(loss_dict['loss_pothole_bce'], expected_bce.item(), places=5)
+        self.assertAlmostEqual(loss_dict['loss_pothole_dice'], expected_dice.item(), places=5)
+        
+        # Assert gradients on pothole channel match the gradient against all-zero target exactly
+        grad_diff = (pothole_grad - pothole_logits.grad[0, 0, :, :]).abs().max().item()
+        self.assertAlmostEqual(grad_diff, 0.0, places=5)
+        print(f"[PASS] (b) Asymmetric mode: crack sample gives non-zero gradient on pothole logits equal to all-zero target loss (grad diff = {grad_diff:.2e}).")
+
+    def test_09_asymmetric_hand_computed_loss(self):
+        """
+        (c) In 'asymmetric' mode, loss matches exact hand-computed values on a multi-sample batch.
+        """
+        loss_fn = MaskedMultiTaskLoss(loss_mode='asymmetric', smooth=1.0)
+        
+        # Batch size 2, 2 channels, 2x2 spatial
+        logits = torch.tensor([
+            [[[1.0, -1.0], [0.5, -0.5]], [[-2.0, 0.0], [1.0, -1.0]]],  # Sample 0 (crack source)
+            [[[0.0, 1.0], [-1.0, 2.0]], [[0.5, -0.5], [1.5, -1.5]]]    # Sample 1 (pothole source)
+        ])
+        
+        targets = torch.tensor([
+            [[[1.0, 0.0], [1.0, 0.0]], [[0.0, 0.0], [0.0, 0.0]]],      # Sample 0: crack GT, pothole 0s
+            [[[0.0, 0.0], [0.0, 0.0]], [[1.0, 0.0], [1.0, 0.0]]]       # Sample 1: crack 0s, pothole GT
+        ])
+        
+        label_mask = torch.tensor([
+            [1.0, 0.0],  # Sample 0 is crack source
+            [0.0, 1.0]   # Sample 1 is pothole source
+        ])
+        
+        loss, loss_dict = loss_fn(logits, targets, label_mask)
+        
+        # 1. Crack channel hand-computation: supervised on Sample 0 only
+        c0_logits = logits[0:1, 0, :, :]
+        c0_targets = targets[0:1, 0, :, :]
+        c0_bce = F.binary_cross_entropy_with_logits(c0_logits, c0_targets).item()
+        c0_probs = torch.sigmoid(c0_logits)
+        c0_inter = (c0_probs * c0_targets).sum().item()
+        c0_card = c0_probs.sum().item() + c0_targets.sum().item()
+        c0_dice = 1.0 - (2.0 * c0_inter + 1.0) / (c0_card + 1.0)
+        expected_c0 = c0_bce + c0_dice
+        
+        # 2. Pothole channel hand-computation: supervised on ALL samples (both Sample 0 and Sample 1)
+        c1_logits = logits[:, 1, :, :]
+        c1_targets = targets[:, 1, :, :]
+        c1_bce = F.binary_cross_entropy_with_logits(c1_logits, c1_targets).item()
+        c1_probs = torch.sigmoid(c1_logits)
+        c1_inter = (c1_probs * c1_targets).sum(dim=[1, 2])
+        c1_card = c1_probs.sum(dim=[1, 2]) + c1_targets.sum(dim=[1, 2])
+        c1_dice_per_sample = 1.0 - (2.0 * c1_inter + 1.0) / (c1_card + 1.0)
+        c1_dice = c1_dice_per_sample.mean().item()
+        expected_c1 = c1_bce + c1_dice
+        
+        expected_total = expected_c0 + expected_c1
+        
+        self.assertAlmostEqual(loss_dict['loss_crack_bce'], c0_bce, places=5)
+        self.assertAlmostEqual(loss_dict['loss_crack_dice'], c0_dice, places=5)
+        self.assertAlmostEqual(loss_dict['loss_pothole_bce'], c1_bce, places=5)
+        self.assertAlmostEqual(loss_dict['loss_pothole_dice'], c1_dice, places=5)
+        self.assertAlmostEqual(loss.item(), expected_total, places=5)
+        print(f"[PASS] (c) Asymmetric mode: hand-computed loss matches exactly ({loss.item():.6f} == {expected_total:.6f}).")
+
 
 if __name__ == '__main__':
     unittest.main()
