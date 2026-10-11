@@ -162,3 +162,78 @@ Evaluated via `notebooks/08_rdd_cross_domain` across all 2,560 images of `rdd202
 | **Model B (Naive)** | Only Crack Boxes (N = 1,470) | Pothole | 35.31% (519) | 22.38% (329) | 0.7491% |
 | **Model A (Masked)** | Only Pothole Boxes (N = 122) | Crack | 41.80% (51) | 9.02% (11) | 0.1418% |
 | **Model B (Naive)** | Only Pothole Boxes (N = 122) | Crack | 3.28% (4) | 0.00% (0) | 0.0135% |
+
+---
+
+## 7. Multi-Seed Training & Validation Ablation (Seeds 42, 43, 44)
+
+Evaluated via `notebooks/09_seed_runs` on validation splits at threshold 0.5 over 30 epochs each.
+
+### A. Run-by-Run Best Epoch Selection Table
+
+| Mode | Seed | Best Epoch | Selection Score | CRACK500 Dice | Pothole Dice | Road Crack Dice | Road Crack Non-Empty Dice | Road Crack Empty 0-Pred |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Masked** | 42 | 25 | 0.7003 | 0.6639 | 0.7368 | 0.3825 | 0.5259 | 3 / 39 (7.7%) |
+| **Masked** | 43 | 28 | 0.7106 | 0.6569 | 0.7643 | 0.3937 | 0.5013 | 3 / 39 (7.7%) |
+| **Masked** | 44 | 28 | 0.7140 | 0.6610 | 0.7670 | 0.4094 | 0.5391 | 3 / 39 (7.7%) |
+| **Naive** | 42 | 30 | 0.7140 | 0.6734 | 0.7546 | 0.4379 | 0.5274 | 11 / 39 (28.2%) |
+| **Naive** | 43 | 18 | 0.7156 | 0.6619 | 0.7693 | 0.3989 | 0.5334 | 11 / 39 (28.2%) |
+| **Naive** | 44 | 30 | 0.7169 | 0.6731 | 0.7607 | 0.4217 | 0.5281 | 10 / 39 (25.6%) |
+
+### B. Run-by-Run Final Epoch 30 Table
+
+| Mode | Seed | Epoch | Selection Score | CRACK500 Dice | Pothole Dice | Road Crack Dice | Road Crack Non-Empty Dice | Road Crack Empty 0-Pred |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Masked** | 42 | 30 | 0.6994 | 0.6641 | 0.7348 | 0.3813 | 0.5230 | 3 / 39 (7.7%) |
+| **Masked** | 43 | 30 | 0.7055 | 0.6570 | 0.7540 | 0.3997 | 0.5076 | 5 / 39 (12.8%) |
+| **Masked** | 44 | 30 | 0.7018 | 0.6605 | 0.7432 | 0.3933 | 0.5366 | 2 / 39 (5.1%) |
+| **Naive** | 42 | 30 | 0.7140 | 0.6734 | 0.7546 | 0.4379 | 0.5274 | 11 / 39 (28.2%) |
+| **Naive** | 43 | 30 | 0.7111 | 0.6685 | 0.7537 | 0.4475 | 0.5648 | 12 / 39 (30.8%) |
+| **Naive** | 44 | 30 | 0.7169 | 0.6731 | 0.7607 | 0.4217 | 0.5281 | 10 / 39 (25.6%) |
+
+### C. Summary Statistics Across 3 Seeds (Mean ± Std)
+
+| Evaluation Setting | Metric | Masked (Mean ± Std) | Naive (Mean ± Std) |
+| :--- | :--- | :--- | :--- |
+| **Best Epoch** | Selection Score | 0.7083 ± 0.0058 | 0.7155 ± 0.0012 |
+| | CRACK500 Dice | 0.6606 ± 0.0029 | 0.6695 ± 0.0053 |
+| | Pothole Dice | 0.7560 ± 0.0136 | 0.7615 ± 0.0060 |
+| | Road Crack Dice | 0.3952 ± 0.0110 | 0.4195 ± 0.0160 |
+| | Road Crack Non-Empty Dice | 0.5221 ± 0.0156 | 0.5296 ± 0.0027 |
+| | Road Crack Empty 0-Pred Count | 3.00 ± 0.00 | 10.67 ± 0.47 |
+| **Final Epoch 30** | Selection Score | 0.7022 ± 0.0025 | 0.7140 ± 0.0024 |
+| | CRACK500 Dice | 0.6605 ± 0.0029 | 0.6717 ± 0.0022 |
+| | Pothole Dice | 0.7440 ± 0.0079 | 0.7563 ± 0.0031 |
+| | Road Crack Dice | 0.3915 ± 0.0076 | 0.4357 ± 0.0106 |
+| | Road Crack Non-Empty Dice | 0.5224 ± 0.0119 | 0.5401 ± 0.0174 |
+| | Road Crack Empty 0-Pred Count | 3.33 ± 1.25 | 11.00 ± 0.82 |
+
+---
+
+## 8. Findings
+
+*The following observations summarize exact printed figures from cross-domain RDD validation and multi-seed training runs without speculative attribution:*
+
+### Cross-Domain RDD2022ES Validation Check (Threshold 0.5)
+- **Zero-Box Images ($N = 788$)**:
+  - Crack channel flag rate (>0.1% foreground): Model A was 34.39% (271 images, mean FG fraction 0.1288%) vs Model B at 5.08% (40 images, mean FG fraction 0.0205%).
+  - Pothole channel flag rate (>0.1% foreground): Model A was 69.92% (551 images, mean FG fraction 5.2213%) vs Model B at 43.53% (343 images, mean FG fraction 1.4874%).
+- **Distress Box Hit Rate ($\ge 5\%$ box pixels predicted) & Box Pixel Coverage**:
+  - Pothole channel on images with pothole boxes ($N = 302$ images, 498 boxes): Model A achieved a 23.84% hit rate (mean box pixel fraction 7.66%) vs Model B at 25.50% (mean box pixel fraction 10.10%).
+  - Crack channel on images with crack boxes ($N = 1,650$ images, 3,278 boxes): Model A achieved a 6.24% hit rate (mean box pixel fraction 0.56%) vs Model B at 8.73% (mean box pixel fraction 0.72%).
+- **Cross-Channel Audit**:
+  - On images containing only crack boxes ($N = 1,470$): Model A flagged pothole foreground (>0.1%) on 63.33% of images (mean FG fraction 2.6762%) vs Model B at 35.31% (mean FG fraction 0.7491%).
+  - On images containing only pothole boxes ($N = 122$): Model A flagged crack foreground (>0.1%) on 41.80% of images (mean FG fraction 0.1418%) vs Model B at 3.28% (mean FG fraction 0.0135%).
+
+### Multi-Seed Training (Seeds 42, 43, 44)
+- **Selection Score**: Across 3 seeds, the best-epoch selection score was 0.7083 ± 0.0058 for Masked vs 0.7155 ± 0.0012 for Naive. At final epoch 30, it was 0.7022 ± 0.0025 for Masked vs 0.7140 ± 0.0024 for Naive.
+- **In-Domain Dice Scores**:
+  - CRACK500 (best epoch): Masked 0.6606 ± 0.0029 vs Naive 0.6695 ± 0.0053; (final epoch 30): Masked 0.6605 ± 0.0029 vs Naive 0.6717 ± 0.0022.
+  - Pothole (best epoch): Masked 0.7560 ± 0.0136 vs Naive 0.7615 ± 0.0060; (final epoch 30): Masked 0.7440 ± 0.0079 vs Naive 0.7563 ± 0.0031.
+  - Road Crack overall (best epoch): Masked 0.3952 ± 0.0110 vs Naive 0.4195 ± 0.0160; (final epoch 30): Masked 0.3915 ± 0.0076 vs Naive 0.4357 ± 0.0106.
+- **Road Crack Non-Empty vs Clean Counts**:
+  - On the 38 non-empty road_crack val images, best-epoch Dice was 0.5221 ± 0.0156 for Masked vs 0.5296 ± 0.0027 for Naive; final epoch 30 Dice was 0.5224 ± 0.0119 for Masked vs 0.5401 ± 0.0174 for Naive.
+  - Out of the 39 empty road_crack val images, the number of images receiving exactly 0 predicted pixels at threshold 0.5 was:
+    - Best epoch: Masked 3.00 ± 0.00 (7.7%) vs Naive 10.67 ± 0.47 (27.4%).
+    - Final epoch 30: Masked 3.33 ± 1.25 (8.5%) vs Naive 11.00 ± 0.82 (28.2%).
+
