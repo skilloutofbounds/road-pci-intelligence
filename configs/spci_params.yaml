@@ -4,14 +4,14 @@
 
 crack_severity:
   # Width thresholds in pixels at normalized shorter side = 512 px
-  # Calibrated to 33rd and 80th percentiles of ground-truth crack widths
-  low_threshold_px: 5.0
-  high_threshold_px: 9.0
+  # Calibrated to 33rd (4.394 px) and 80th (11.588 px) percentiles of ground-truth crack widths over train+val
+  low_threshold_px: 4.394
+  high_threshold_px: 11.588
 
 network_factor:
   # Multiplier: m = 1 + beta * clip(network_index_pruned / n_ref, 0, 1)
-  # n_ref is the 90th percentile of network_index over crack-bearing train+val GT masks
-  n_ref: 1.933
+  # n_ref is the 90th percentile of network_index over crack-bearing train+val GT masks (1.275)
+  n_ref: 1.275
   beta: 0.5
 
 pothole_severity:
