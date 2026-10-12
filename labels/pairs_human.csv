@@ -1,0 +1,61 @@
+pair_id,image_a,image_b,worse
+pair_001,CRACK500/JPEGImages/images/20160222_115620.jpg,CRACK500/JPEGImages/images/IMG_1732.jpg,B
+pair_002,CRACK500/JPEGImages/images/20160308_072824.jpg,CRACK500/JPEGImages/images/20160222_081031.jpg,A
+pair_003,CRACK500/JPEGImages/images/20160316_183217.jpg,CRACK500/JPEGImages/images/20160329_094632.jpg,B
+pair_004,CRACK500/JPEGImages/images/20160225_114531.jpg,CRACK500/JPEGImages/images/20160324_173527.jpg,A
+pair_005,CRACK500/JPEGImages/images/20160303_092627.jpg,CRACK500/JPEGImages/images/20160330_165325.jpg,B
+pair_006,CRACK500/JPEGImages/images/20160329_093920.jpg,CRACK500/JPEGImages/images/20160321_185534.jpg,same
+pair_007,CRACK500/JPEGImages/images/20160222_165951.jpg,CRACK500/JPEGImages/images/20160328_154352.jpg,A
+pair_008,CRACK500/JPEGImages/images/20160222_115837.jpg,CRACK500/JPEGImages/images/20160308_073213.jpg,B
+pair_009,CRACK500/JPEGImages/images/20160330_170359.jpg,CRACK500/JPEGImages/images/20160329_094452.jpg,B
+pair_010,CRACK500/JPEGImages/images/20160324_173501.jpg,CRACK500/JPEGImages/images/20160328_153357.jpg,B
+pair_011,CRACK500/JPEGImages/images/20160402_150314.jpg,CRACK500/JPEGImages/images/20160307_163552.jpg,A
+pair_012,CRACK500/JPEGImages/images/20160328_150821.jpg,CRACK500/JPEGImages/images/20160328_154202.jpg,B
+pair_013,CRACK500/JPEGImages/images/IMG_5781.jpg,CRACK500/JPEGImages/images/20160222_165909.jpg,A
+pair_014,CRACK500/JPEGImages/images/20160330_165956.jpg,CRACK500/JPEGImages/images/20160328_153718.jpg,B
+pair_015,CRACK500/JPEGImages/images/20160318_181632.jpg,CRACK500/JPEGImages/images/20160328_154356.jpg,same
+pair_016,CRACK500/JPEGImages/images/IMG_6183.jpg,CRACK500/JPEGImages/images/20160308_072831.jpg,B
+pair_017,CRACK500/JPEGImages/images/20160402_150300.jpg,CRACK500/JPEGImages/images/20160308_160128.jpg,B
+pair_018,CRACK500/JPEGImages/images/20160328_153629.jpg,CRACK500/JPEGImages/images/20160306_103632.jpg,same
+pair_019,CRACK500/JPEGImages/images/IMG_2906.jpg,CRACK500/JPEGImages/images/20160222_115519.jpg,A
+pair_020,CRACK500/JPEGImages/images/20160307_163641.jpg,CRACK500/JPEGImages/images/20160328_151423.jpg,B
+pair_021,road crack dataset semantic/train/road_1031_2_jpg.rf.ed51cc063b1c30154d96a0fd38b288a7.jpg,road crack dataset semantic/train/road_1031_3_jpg.rf.e146267c7fed1607c7b99a9771a4b3eb.jpg,A
+pair_022,road crack dataset semantic/train/road_1002_0_jpg.rf.1eafaff605e7aee5e36814ef3290c345.jpg,road crack dataset semantic/train/road_1002_0_jpg.rf.8b6620043c38cd171865e0a29665b035.jpg,same
+pair_023,road crack dataset semantic/train/road_1002_0_jpg.rf.5fe7772ec3377bde86ee0beeb347ac2d.jpg,road crack dataset semantic/train/road_1002_2_jpg.rf.587bed950a7a9f48bb5aea5e9c381c09.jpg,A
+pair_024,road crack dataset semantic/train/road_1010_1_jpg.rf.f9ef05c3a74abf8bb7e0618ace88d1e1.jpg,road crack dataset semantic/train/road_1002_1_jpg.rf.3ca922ca52fdc1a14454b706d89b8d40.jpg,A
+pair_025,road crack dataset semantic/train/road_1002_2_jpg.rf.fdce2d89c5f5106ef13105557c4a1836.jpg,road crack dataset semantic/train/road_1002_2_jpg.rf.2587ea164fab745ac7b5d5a32d4f98bc.jpg,same
+pair_026,road crack dataset semantic/train/road_1031_2_jpg.rf.a20f9dd0af2b55508b4861831be943be.jpg,road crack dataset semantic/train/road_1031_3_jpg.rf.e3efc4795e3f675212f26d0c92612f14.jpg,A
+pair_027,road crack dataset semantic/train/road_1010_1_jpg.rf.069431fa7438c5ac38d9ec9557998198.jpg,road crack dataset semantic/train/road_1010_1_jpg.rf.03bb8ce4d5381a74215102031a405f6e.jpg,same
+pair_028,road crack dataset semantic/valid/road_1047_6_jpg.rf.824c535d9c4b879f413a37c86c944a1f.jpg,road crack dataset semantic/train/road_1002_1_jpg.rf.26d72b7f4b6f7dbbc38274cc5747a465.jpg,A
+pair_029,road crack dataset semantic/valid/road_1047_6_jpg.rf.aac632486bb3f74cd1d87c56bedc2f68.jpg,road crack dataset semantic/train/road_1010_5_jpg.rf.5ea5714893abb31cdc27205dba90668a.jpg,B
+pair_030,road crack dataset semantic/valid/road_1047_5_jpg.rf.f8d18a91dff3c2c77bb1902dfc83ed15.jpg,road crack dataset semantic/train/road_1002_1_jpg.rf.a409d39cc8b8d1bfbb4a36ee95885031.jpg,A
+pair_031,road crack dataset semantic/valid/road_1047_6_jpg.rf.9ecced98d7403996108e05200c78df6f.jpg,road crack dataset semantic/train/road_1010_5_jpg.rf.b626115b7764f391e4dd3ee4c66f24c4.jpg,B
+pair_032,road crack dataset semantic/valid/road_1047_5_jpg.rf.27b82944918cae2bc800f0d4556b1495.jpg,road crack dataset semantic/valid/road_1047_6_jpg.rf.e4045054d3dae2ef82b24c698449ed90.jpg,A
+pair_033,road crack dataset semantic/valid/road_1047_6_jpg.rf.369270feb265af5c6e091b139c9ea166.jpg,road crack dataset semantic/train/road_1010_1_jpg.rf.1996059dd3ff5db5164424291188de00.jpg,B
+pair_034,road crack dataset semantic/train/road_1031_2_jpg.rf.849b00cf238aa678f61e948afac4c108.jpg,road crack dataset semantic/train/road_1031_2_jpg.rf.8192a7501f23465e08c5d066ee44708e.jpg,same
+pair_035,road crack dataset semantic/train/road_1002_0_jpg.rf.4be38691a3ccac8bf2866f3047d4dcc8.jpg,road crack dataset semantic/train/road_1031_3_jpg.rf.2b3eb86683b4c3bf3bd3232e57d8b537.jpg,A
+pair_036,road crack dataset semantic/valid/road_1002_4_jpg.rf.a7caa7d617354ff0b98c089e33bccc08.jpg,road crack dataset semantic/train/road_1010_5_jpg.rf.56bb33d1d43877c6eea00bd92270ad23.jpg,B
+pair_037,road crack dataset semantic/train/road_1010_1_jpg.rf.42c90f4b626507889209caf032c28411.jpg,road crack dataset semantic/valid/road_1047_1_jpg.rf.08eeaefeb2d3e5e164c42931ae238c7f.jpg,B
+pair_038,road crack dataset semantic/train/road_1031_2_jpg.rf.262df18994426790f3be9763030d5978.jpg,road crack dataset semantic/train/road_1002_1_jpg.rf.380e4b0b5e65136f064b85bd5984a14b.jpg,A
+pair_039,road crack dataset semantic/train/road_1031_3_jpg.rf.c179f1caa146e7d613fe4a3e2d80570a.jpg,road crack dataset semantic/valid/road_1047_1_jpg.rf.5cd96867eb49dc4c49d10813a3855bc0.jpg,B
+pair_040,road crack dataset semantic/valid/road_1047_1_jpg.rf.7a47106a46fdec2df17cf617c69e8895.jpg,road crack dataset semantic/train/road_1010_5_jpg.rf.1c068f604a746e793aae2d25a704f642.jpg,A
+pair_041,Pothole_Segmentation_YOLOv8/valid/images/pic-45-_jpg.rf.8e102a986584d47797dc92558c2af624.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-236-_jpg.rf.34f38065b7233d8b9c03b746ffc9a780.jpg,A
+pair_042,Pothole_Segmentation_YOLOv8/valid/images/pic-125-_jpg.rf.3d316e9144cb7438021e01065de91057.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-273-_jpg.rf.36d10c68fb23799bd0a58e48e0b995ce.jpg,A
+pair_043,Pothole_Segmentation_YOLOv8/valid/images/pic-175-_jpg.rf.9fc746d4865c11f38047cf383baa30a6.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-193-_jpg.rf.4520ff34079afc8e9f9b50a633c08876.jpg,A
+pair_044,Pothole_Segmentation_YOLOv8/valid/images/pic-262-_jpg.rf.02970860794f859699c9f743bc0fd7d1.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-204-_jpg.rf.c3990b25e295bfd6b4605c6305cce37c.jpg,A
+pair_045,Pothole_Segmentation_YOLOv8/valid/images/pic-28-_jpg.rf.fe8316c392940899d9211be3305c9ab6.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-183-_jpg.rf.277cfed19f046acc63dc9640b239f1df.jpg,A
+pair_046,Pothole_Segmentation_YOLOv8/valid/images/pic-67-_jpg.rf.663b4f930bb764609355101fbce07ab1.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-209-_jpg.rf.533a84bcc43e29e16c0f80069ee7f8df.jpg,A
+pair_047,Pothole_Segmentation_YOLOv8/valid/images/pic-27-_jpg.rf.b4cd8eb26d6941eabfc17280f03bca69.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-36-_jpg.rf.13a668c4003681c4631508465eef5a9f.jpg,same
+pair_048,Pothole_Segmentation_YOLOv8/valid/images/pic-58-_jpg.rf.8f585bdabd7d6e5b0285121867659f37.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-17-_jpg.rf.0d172b6accedf4c52a3868d9b690d48b.jpg,B
+pair_049,Pothole_Segmentation_YOLOv8/valid/images/pic-99-_jpg.rf.28d287fa96c09a12f2511e1b4df7e5a1.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-270-_jpg.rf.2a0793533346a7355bbeb34291b4a067.jpg,A
+pair_050,Pothole_Segmentation_YOLOv8/valid/images/pic-178-_jpg.rf.2e27d006aec1544f1eec88d9170fd6ce.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-33-_jpg.rf.143c56d136e3245555b26b4d5108a4e1.jpg,same
+pair_051,Pothole_Segmentation_YOLOv8/valid/images/pic-95-_jpg.rf.eca25439e9e1dd31f29df105f4faa122.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-72-_jpg.rf.82c8314917ff5284106bd3428cff5792.jpg,A
+pair_052,Pothole_Segmentation_YOLOv8/valid/images/pic-161-_jpg.rf.1cff77d21f54b7ed9234e896abcf0f5b.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-154-_jpg.rf.a9e6b534da24b1c1815902210ab23be9.jpg,same
+pair_053,Pothole_Segmentation_YOLOv8/valid/images/pic-184-_jpg.rf.cb753b5f714073fc4a8c2de602386399.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-61-_jpg.rf.72ad391fcf2334c24de5ed48dda25001.jpg,A
+pair_054,Pothole_Segmentation_YOLOv8/valid/images/pic-129-_jpg.rf.d307956eee8ac32fbe793335e87c7b67.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-152-_jpg.rf.510fb0040c8523bb66ec10b0fe67b4b4.jpg,B
+pair_055,Pothole_Segmentation_YOLOv8/valid/images/pic-263-_jpg.rf.47073e3fbc426b15c3caa7e8daa66719.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-151-_jpg.rf.45a82558c583efe9dda4ea02e294595a.jpg,same
+pair_056,Pothole_Segmentation_YOLOv8/valid/images/pic-308-_jpg.rf.8f5b6dc0b616365d05bce17bf30eff39.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-50-_jpg.rf.cb41506e84f6cac629bd55e40e329834.jpg,A
+pair_057,Pothole_Segmentation_YOLOv8/valid/images/pic-123-_jpg.rf.385ae3fbcdabda81f72ddf11f6a4b93d.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-60-_jpg.rf.4e715308cc8dc7455b767414cda028ab.jpg,same
+pair_058,Pothole_Segmentation_YOLOv8/valid/images/pic-22-_jpg.rf.aec225ee7ab2b5f7791d6579b213600b.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-114-_jpg.rf.a0f30e06b3b96d7879d5f55a7012433c.jpg,A
+pair_059,Pothole_Segmentation_YOLOv8/valid/images/pic-257-_jpg.rf.09cb9983a70f1bd7ba096c252b64f909.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-205-_jpg.rf.cf4be807bced55552b98c208585d2c56.jpg,B
+pair_060,Pothole_Segmentation_YOLOv8/valid/images/pic-69-_jpg.rf.0fcb6cd22beb140d931a387036b7eab6.jpg,Pothole_Segmentation_YOLOv8/valid/images/pic-157-_jpg.rf.2247b000d655232fbf8a58b5add102ca.jpg,same
