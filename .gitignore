@@ -44,7 +44,7 @@ kaggle.json
 data/
 outputs/
 scratch/
-labels/*.png
+*.png
 *.pt
 *.pth
 *.npz

@@ -77,7 +77,22 @@ flowchart LR
   - Feature Notebook: [`notebooks/13_features/`](notebooks/13_features/) ([`vedshah04/road-pci-intelligence-features-and-pci`](https://www.kaggle.com/code/vedshah04/road-pci-intelligence-features-and-pci)) running on CPU for ground-truth feature distributions and validation rank correlation with frozen model predictions.
   - Human Labeling Sheet: [`scripts/make_pair_sheet.py`](scripts/make_pair_sheet.py) generating 60 blinded test pairs across 10 pages with [`labels/pairs_template.csv`](labels/pairs_template.csv) (Seed 42).
   - Design Documentation: [`docs/pci_design.md`](docs/pci_design.md) documenting definitions, units, scale-invariance assumptions, and validation plans.
-- [ ] **Step 4B: Automated PCI Computation Module** (Severity deduction curves & composite index formulation)
+- [x] **Step 4B: Automated Simplified PCI (sPCI) Engine & Freeze** *(Done)*:
+  - Rating Scale Alignment: Standard ASTM D6433 7-band pavement condition rating scale (86–100 Good, 71–85 Satisfactory, 56–70 Fair, 41–55 Poor, 26–40 Very Poor, 11–25 Serious, 0–10 Failed).
+  - Continuous Deduct Curves: Calibrated sigmoid deduct curves for crack distress ($D_{\text{crack}} = 65 \cdot \sigma(12 \cdot (d - 0.08))$) and pothole distress ($D_{\text{pothole}} = 80 \cdot \sigma(30 \cdot (a - 0.04))$).
+  - Multi-Distress Deduct Correction: Softmax CDV interaction $\beta=0.85$, $m=0.75$, noise floor $\tau=0.00$.
+  - Implementation & Configuration: [`src/spci.py`](src/spci.py) and [`configs/spci_params.yaml`](configs/spci_params.yaml) verified and frozen under git tag `spci-v1-frozen`.
+  - Comprehensive Unit Tests: [`tests/test_spci.py`](tests/test_spci.py) passing 10/10 tests (boundary values, monotone severity, scale invariance, empty masks).
+- [x] **Step 4C: Human-Agreement Validation & Test Split Evaluation** *(Done)*:
+  - Blinded Protocol: 60 test image pairs independently labeled by human evaluator in [`labels/pairs_human.csv`](labels/pairs_human.csv) (13 marked identical condition excluded, $N=47$ valid evaluation pairs).
+  - Test Evaluation Execution: Model inferences and test pair features computed via Kaggle GPU Notebook 14 ([`notebooks/14_human_agreement/`](notebooks/14_human_agreement/)) with test scores frozen under tag `test-scores-computed` ([`results/spci_test_pairs.csv`](results/spci_test_pairs.csv)).
+  - Pairwise Human Agreement: **76.60%** (36/47, 95% CI: [64.89%, 87.23%]), 2 ties ($|\Delta\text{sPCI}| < 1.0$).
+    - CRACK500: **88.24%** (15/17)
+    - Road Crack: **93.75%** (15/16)
+    - Pothole: **42.86%** (6/14, 5 full + 2 ties @ 0.5)
+  - Baseline Comparison: Damage Area Baseline **74.47%** (35/47, 95% CI: [61.70%, 85.11%]). Paired difference $+2.13\%$ (95% CI: $[-2.13\%, +7.45\%]$) — confirmed pre-registered interpretation of *no detectable difference*.
+  - Full Test Split Benchmark ($N=200$ images, GT vs Predicted sPCI): CRACK500 Spearman $\rho = 0.9038$ ($\text{MAE} = 6.81$), Road Crack $\rho = 0.7547$ ($\text{MAE} = 11.80$), Pothole $\rho = 0.8123$ ($\text{MAE} = 10.28$).
+  - Documentation: [`docs/human_validation.md`](docs/human_validation.md).
 - [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
 - [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
 
@@ -88,6 +103,7 @@ flowchart LR
 ```
 road-pci-intelligence/
 ├── app/                  # Streamlit application UI and components
+├── configs/              # Model and sPCI parameter configurations
 ├── data/                 # Raw and processed datasets (git-ignored)
 ├── docs/                 # Architectural documentation & data decisions
 ├── labels/               # Human pairwise preference labeling sheets & templates
@@ -103,14 +119,18 @@ road-pci-intelligence/
 │   ├── 08_rdd_cross_domain/     # RDD cross-domain evaluation (Models A and B)
 │   ├── 08_rdd_cross_domain_abc/ # Combined RDD cross-domain evaluation (Models A, B, and C)
 │   ├── 09_seed_runs/            # Multi-seed training (Seeds 42, 43, 44)
+│   ├── 10_rdd_box_stats/        # Exhaustive RDD box statistics calculator
 │   ├── 11_train_asymmetric_and_rdd_eval/ # Multi-seed asymmetric training & evaluation
 │   ├── 12_final_eval/           # Frozen model test evaluation & out-of-domain audit
-│   └── 13_features/             # Pavement feature extraction & validation correlation
+│   ├── 13_features/             # Pavement feature extraction & validation correlation
+│   └── 14_human_agreement/     # Human validation inference & test sPCI calculation
 ├── outputs/              # Model checkpoints, evaluation plots, and reports (git-ignored)
+├── results/              # Frozen evaluation scores & tabular benchmark results
 ├── scripts/              # Utility scripts (make_pair_sheet, evaluation helpers)
 ├── src/                  # Core modular source code (rules, builders, models, PCI, features)
-├── tests/                # Automated unit test suite (manifests, losses, features)
+├── tests/                # Automated unit test suite (manifests, losses, features, spci)
 ├── .gitignore            # Git ignore configuration
 ├── README.md             # Project overview and roadmap
 └── requirements.txt      # Project Python dependencies
 ```
+
