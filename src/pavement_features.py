@@ -4,6 +4,8 @@ Pavement feature extraction module for automated pavement condition assessment.
 Computes interpretable geometric and morphological distress features from binary
 segmentation masks (crack and pothole channels) normalized to a standardized
 resolution (shorter side = 512 px).
+Includes skeleton pruning to remove edge spurs (< 12 px) for robust junction
+and network topology quantification.
 """
 
 from typing import Dict, Any, Optional, Tuple, Set
@@ -55,9 +57,106 @@ def compute_skeleton_length(skel_binary: np.ndarray) -> float:
     return float(h_edges + v_edges + d1_edges + d2_edges)
 
 
+def compute_crossing_number_map(skel_binary: np.ndarray) -> np.ndarray:
+    """
+    Computes the Rutovitz crossing number map for a binary skeleton.
+    CN = 0: isolated pixel
+    CN = 1: endpoint
+    CN = 2: internal line pixel
+    CN >= 3: junction / branch node
+    """
+    sk = (skel_binary > 0).astype(np.int32)
+    h, w = sk.shape
+    padded = np.pad(sk, 1, mode='constant', constant_values=0)
+
+    # 8 cyclic neighbors: E, NE, N, NW, W, SW, S, SE
+    offsets = [(0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (1, 1)]
+    neighbors = [padded[1 + dy:1 + dy + h, 1 + dx:1 + dx + w] for dy, dx in offsets]
+    neighbors.append(neighbors[0])
+
+    cn = np.zeros((h, w), dtype=np.int32)
+    for i in range(8):
+        cn += np.abs(neighbors[i + 1] - neighbors[i])
+    cn = (cn // 2) * sk
+    return cn
+
+
+def prune_skeleton(skel_binary: np.ndarray, min_branch_len: int = 12) -> np.ndarray:
+    """
+    Prunes end-branches shorter than min_branch_len from a binary skeleton.
+    An end-branch is a path starting at an endpoint (CN == 1) and ending at a junction (CN >= 3).
+    Spurs shorter than min_branch_len (exclusive of the junction pixel) are removed.
+    """
+    skel = (skel_binary > 0).astype(bool)
+    if not np.any(skel):
+        return skel
+
+    cn = compute_crossing_number_map(skel)
+    is_junction = (cn >= 3)
+    if not np.any(is_junction):
+        return skel
+
+    endpoints = np.argwhere(cn == 1)
+    to_remove = set()
+    h, w = skel.shape
+
+    for ep in endpoints:
+        ey, ex = int(ep[0]), int(ep[1])
+        if is_junction[ey, ex]:
+            continue
+
+        path = [(ey, ex)]
+        prev = None
+        curr = (ey, ex)
+        reached_junction = False
+
+        while len(path) <= min_branch_len:
+            cy, cx = curr
+            # Find 8-neighbors of curr in skel excluding prev
+            neighbors = []
+            for dy in [-1, 0, 1]:
+                for dx in [-1, 0, 1]:
+                    if dy == 0 and dx == 0:
+                        continue
+                    ny, nx = cy + dy, cx + dx
+                    if 0 <= ny < h and 0 <= nx < w:
+                        if skel[ny, nx] and (ny, nx) != prev:
+                            neighbors.append((ny, nx))
+
+            if not neighbors:
+                break
+
+            # Check if any neighbor is a junction
+            junc_nb = [nb for nb in neighbors if is_junction[nb[0], nb[1]]]
+            if junc_nb:
+                reached_junction = True
+                break
+
+            if len(neighbors) == 1:
+                nxt = neighbors[0]
+                path.append(nxt)
+                prev = curr
+                curr = nxt
+            else:
+                # Multiple neighbors: complex node
+                break
+
+        if reached_junction and len(path) < min_branch_len:
+            for pt in path:
+                to_remove.add(pt)
+
+    skel_pruned = skel.copy()
+    for py, px in to_remove:
+        skel_pruned[py, px] = False
+
+    return skel_pruned
+
+
 def compute_features(
     crack_mask: Optional[np.ndarray],
-    pothole_mask: Optional[np.ndarray]
+    pothole_mask: Optional[np.ndarray],
+    prune_branches: bool = True,
+    min_branch_len: int = 12
 ) -> Dict[str, Any]:
     """
     Computes pavement distress metrics from crack and pothole binary masks.
@@ -68,6 +167,10 @@ def compute_features(
         Binary or boolean 2D array indicating crack distress.
     pothole_mask : np.ndarray or None
         Binary or boolean 2D array indicating pothole distress.
+    prune_branches : bool, default=True
+        Whether to prune short end-branches (< 12 px) from the skeleton to remove edge spurs.
+    min_branch_len : int, default=12
+        Minimum length threshold for keeping end-branches.
 
     Returns
     -------
@@ -75,7 +178,8 @@ def compute_features(
         Extracted features containing:
         - crack_area_frac: float (crack area / total image area)
         - crack_length_px: float (skeleton length in pixels, diagonal = sqrt(2))
-        - crack_length_density: float (crack_length_px / 512, length per 512 px)
+        - crack_length_short_sides: float (crack_length_px / 512, length in 512 px short sides)
+        - crack_length_density: float (alias for crack_length_short_sides)
         - mean_width_px: float (crack_area / skeleton_length)
         - relative_width: float (mean_width_px / 512)
         - max_width_px: float (max local diameter from Euclidean distance transform)
@@ -125,6 +229,7 @@ def compute_features(
 
     if crack_area_px == 0:
         crack_length_px = 0.0
+        crack_length_short_sides = 0.0
         crack_length_density = 0.0
         mean_width_px = 0.0
         relative_width = 0.0
@@ -135,11 +240,15 @@ def compute_features(
         network_index = 0.0
     else:
         # Morphological skeleton
-        skel = skeletonize(clean_crack > 0)
-        crack_length_px = compute_skeleton_length(skel)
+        skel_raw = skeletonize(clean_crack > 0)
+        if prune_branches:
+            skel = prune_skeleton(skel_raw, min_branch_len=min_branch_len)
+        else:
+            skel = skel_raw
 
-        # crack_length_density = crack_length_px / (512 * 512) * 512 = crack_length_px / 512
-        crack_length_density = float(crack_length_px / 512.0)
+        crack_length_px = compute_skeleton_length(skel)
+        crack_length_short_sides = float(crack_length_px / 512.0)
+        crack_length_density = crack_length_short_sides  # Documented alias
 
         # Width metrics
         if crack_length_px > 0:
@@ -160,7 +269,7 @@ def compute_features(
             width_p90_px = max_width_px
 
         # Junctions: skeleton pixels with >= 3 8-neighbors, merged when adjacent
-        skel_u8 = skel_mask.astype(np.uint8)
+        skel_u8 = skel.astype(np.uint8)
         k_neighbors = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.uint8)
         neighbor_count = cv2.filter2D(skel_u8, -1, k_neighbors) * skel_u8
         junction_pixels = ((neighbor_count >= 3) & (skel_u8 > 0)).astype(np.uint8)
@@ -219,6 +328,7 @@ def compute_features(
     return {
         'crack_area_frac': float(crack_area_frac),
         'crack_length_px': float(crack_length_px),
+        'crack_length_short_sides': float(crack_length_short_sides),
         'crack_length_density': float(crack_length_density),
         'mean_width_px': float(mean_width_px),
         'relative_width': float(relative_width),

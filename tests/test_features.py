@@ -173,6 +173,37 @@ class TestPavementFeatures(unittest.TestCase):
         print(f"[TEST 08] Scaling invariance: 256x256 rw={rw_256:.6f}, 512x512 rw={rw_512:.6f}, diff={rel_diff*100:.2f}%")
         self.assertLessEqual(rel_diff, 0.05, f"Relative width difference {rel_diff} > 5%")
 
+    def test_09_spur_pruning_zero_junctions(self):
+        """
+        A line with a 5 px spur gives 0 junctions after skeleton pruning.
+        """
+        mask = np.zeros((512, 512), dtype=np.uint8)
+        # Main horizontal crack (area >> 30)
+        mask[255:258, 100:300] = 1 # length 200, width 3
+        # Vertical spur of 5 px attached at (255, 200)
+        mask[250:255, 200:201] = 1 # 5 px spur
+
+        feats = compute_features(crack_mask=mask, pothole_mask=None, prune_branches=True, min_branch_len=12)
+        n_junc = feats['n_junctions']
+        print(f"[TEST 09] Line with 5 px spur: n_junctions={n_junc}")
+        self.assertEqual(n_junc, 0, f"Expected 0 junctions after pruning 5 px spur, got {n_junc}")
+
+    def test_10_t_junction_retained_one_junction(self):
+        """
+        A T-junction with a 40 px branch gives exactly 1 junction after skeleton pruning.
+        """
+        mask = np.zeros((512, 512), dtype=np.uint8)
+        # Main horizontal crack
+        mask[255:258, 100:300] = 1 # length 200, width 3
+        # Vertical branch of 40 px attached at (255, 200)
+        mask[215:255, 199:202] = 1 # 40 px branch, width 3
+
+        feats = compute_features(crack_mask=mask, pothole_mask=None, prune_branches=True, min_branch_len=12)
+        n_junc = feats['n_junctions']
+        print(f"[TEST 10] T-junction with 40 px branch: n_junctions={n_junc}")
+        self.assertEqual(n_junc, 1, f"Expected 1 junction for 40 px branch, got {n_junc}")
+
 
 if __name__ == '__main__':
     unittest.main()
+

@@ -1,0 +1,55 @@
+# Simplified Pavement Condition Index (sPCI) Configuration
+# Based on geometric distress quantification and ASTM D6433 rating framework.
+# Note: Deduct curves are empirical approximations for relative ranking and are NOT calibrated to ASTM deduct charts.
+
+crack_severity:
+  # Width thresholds in pixels at normalized shorter side = 512 px
+  # Calibrated to 33rd and 80th percentiles of ground-truth crack widths
+  low_threshold_px: 5.0
+  high_threshold_px: 9.0
+
+network_factor:
+  # Multiplier: m = 1 + beta * clip(network_index_pruned / n_ref, 0, 1)
+  # n_ref is the 90th percentile of network_index over crack-bearing train+val GT masks
+  n_ref: 1.933
+  beta: 0.5
+
+pothole_severity:
+  # Normalized equivalent diameter thresholds (equiv_diameter / 512)
+  # Pothole depth is unknown from 2D RGB imagery; severity relies on equivalent surface footprint
+  low_threshold_norm: 0.08
+  high_threshold_norm: 0.20
+
+deduct_curves:
+  # Deduct formula: DV = min(100.0, a * (q ** b))
+  # For cracks: quantity q = skeleton length per severity / 512 (units: 512 px short sides)
+  # For potholes: quantity q = surface area fraction per severity (0.0 to 1.0)
+  crack_low:
+    a: 5.0
+    b: 0.75
+  crack_medium:
+    a: 12.0
+    b: 0.75
+  crack_high:
+    a: 25.0
+    b: 0.75
+
+  pothole_low:
+    a: 100.0
+    b: 0.60
+  pothole_medium:
+    a: 160.0
+    b: 0.60
+  pothole_high:
+    a: 240.0
+    b: 0.60
+
+condition_classes:
+  # Standard ASTM D6433-20 Table 1 condition rating bands
+  good: [85.0, 100.0]
+  satisfactory: [70.0, 85.0]
+  fair: [55.0, 70.0]
+  poor: [40.0, 55.0]
+  very_poor: [25.0, 40.0]
+  serious: [10.0, 25.0]
+  failed: [0.0, 10.0]
