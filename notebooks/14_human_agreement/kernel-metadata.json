@@ -1,0 +1,20 @@
+{
+  "id": "vedshah04/road-pci-intelligence-test-evaluation",
+  "title": "Road PCI Intelligence - Test Evaluation",
+  "code_file": "14_test_eval.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [
+    "vedshah04/road-pci-seg-final-weights",
+    "sj26717/crack500",
+    "farzadnekouei/pothole-image-segmentation-dataset",
+    "rukiyeaydn/road-crack-dataset"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
