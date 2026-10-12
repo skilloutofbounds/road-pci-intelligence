@@ -47,6 +47,8 @@ scratch/
 labels/*.png
 *.pt
 *.pth
+*.npz
+
 
 # OS generated files
 .DS_Store

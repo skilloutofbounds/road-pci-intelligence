@@ -53,33 +53,49 @@ def load_spci_config(config_path: Optional[Union[str, Path]] = None) -> Dict[str
             "pothole_high": {"a": 240.0, "b": 0.60},
         },
         "condition_classes": {
-            "good": [85.0, 100.0],
-            "satisfactory": [70.0, 85.0],
-            "fair": [55.0, 70.0],
-            "poor": [40.0, 55.0],
-            "very_poor": [25.0, 40.0],
-            "serious": [10.0, 25.0],
-            "failed": [0.0, 10.0],
+            "good": [86, 100],
+            "satisfactory": [71, 85],
+            "fair": [56, 70],
+            "poor": [41, 55],
+            "very_poor": [26, 40],
+            "serious": [11, 25],
+            "failed": [0, 10],
+        },
+        "noise_floor": {
+            "tau_short_sides": 0.0,
         },
     }
 
 
 def get_condition_class(spci: float, classes_cfg: Optional[Dict[str, list]] = None) -> str:
-    """Maps continuous sPCI in [0, 100] to an ASTM D6433 condition category."""
-    if spci >= 85.0:
+    """
+    Maps continuous sPCI in [0, 100] to an ASTM D6433 condition category.
+    Per ASTM D6433 Figure 1, the standard non-overlapping integer rating bands are:
+      86-100: Good
+      71-85:  Satisfactory
+      56-70:  Fair
+      41-55:  Poor
+      26-40:  Very Poor
+      11-25:  Serious
+       0-10:  Failed
+    Continuous sPCI is mapped by rounding to the nearest integer per ASTM D6433 Section 10.
+    """
+    val = int(np.clip(np.round(spci), 0, 100))
+    if val >= 86:
         return "Good"
-    elif spci >= 70.0:
+    elif val >= 71:
         return "Satisfactory"
-    elif spci >= 55.0:
+    elif val >= 56:
         return "Fair"
-    elif spci >= 40.0:
+    elif val >= 41:
         return "Poor"
-    elif spci >= 25.0:
+    elif val >= 26:
         return "Very Poor"
-    elif spci >= 10.0:
+    elif val >= 11:
         return "Serious"
     else:
         return "Failed"
+
 
 
 def compute_spci(
@@ -87,6 +103,7 @@ def compute_spci(
     pothole_mask: Optional[np.ndarray],
     config: Optional[Dict[str, Any]] = None,
     config_path: Optional[Union[str, Path]] = None,
+    noise_floor_tau: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Computes simplified Pavement Condition Index (sPCI) from binary masks.
@@ -101,6 +118,10 @@ def compute_spci(
         Pre-loaded configuration dictionary.
     config_path : str or Path, optional
         Path to YAML configuration file.
+    noise_floor_tau : float, optional
+        Noise floor threshold tau in short sides (length / 512). If total crack
+        skeleton length is below tau, crack deducts are set to 0.0.
+
 
     Returns
     -------
@@ -143,6 +164,7 @@ def compute_spci(
             clean_crack[crack_lbls == lbl] = 1
 
     crack_area_px = int(np.sum(clean_crack))
+    crack_length_px = 0.0
     q_crack_low = 0.0
     q_crack_med = 0.0
     q_crack_high = 0.0
@@ -152,6 +174,7 @@ def compute_spci(
         skel_raw = skeletonize(clean_crack > 0)
         skel = prune_skeleton(skel_raw, min_branch_len=12)
         crack_length_px = compute_skeleton_length(skel)
+
 
         # Distance transform for local width
         dist_transform = cv2.distanceTransform(clean_crack, cv2.DIST_L2, 5)
@@ -254,9 +277,22 @@ def compute_spci(
         val = multiplier * float(params["a"]) * (q ** float(params["b"]))
         return float(np.clip(val, 0.0, 100.0))
 
-    dv_crack_low = calc_dv(q_crack_low, curves["crack_low"], multiplier=network_factor)
-    dv_crack_med = calc_dv(q_crack_med, curves["crack_medium"], multiplier=network_factor)
-    dv_crack_high = calc_dv(q_crack_high, curves["crack_high"], multiplier=network_factor)
+    # Optional noise floor tau in short sides (length / 512)
+    tau = float(cfg.get("noise_floor", {}).get("tau_short_sides", 0.0))
+    if noise_floor_tau is not None:
+        tau = float(noise_floor_tau)
+
+    total_crack_length_short_sides = float(crack_length_px / 512.0)
+    if total_crack_length_short_sides < tau:
+        dv_crack_low = 0.0
+        dv_crack_med = 0.0
+        dv_crack_high = 0.0
+    else:
+        dv_crack_low = calc_dv(q_crack_low, curves["crack_low"], multiplier=network_factor)
+        dv_crack_med = calc_dv(q_crack_med, curves["crack_medium"], multiplier=network_factor)
+        dv_crack_high = calc_dv(q_crack_high, curves["crack_high"], multiplier=network_factor)
+
+
 
     dv_pot_low = calc_dv(q_pot_low, curves["pothole_low"], multiplier=1.0)
     dv_pot_med = calc_dv(q_pot_med, curves["pothole_medium"], multiplier=1.0)

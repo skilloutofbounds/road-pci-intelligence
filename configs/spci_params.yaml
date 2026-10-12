@@ -45,11 +45,17 @@ deduct_curves:
     b: 0.60
 
 condition_classes:
-  # Standard ASTM D6433-20 Table 1 condition rating bands
-  good: [85.0, 100.0]
-  satisfactory: [70.0, 85.0]
-  fair: [55.0, 70.0]
-  poor: [40.0, 55.0]
-  very_poor: [25.0, 40.0]
-  serious: [10.0, 25.0]
-  failed: [0.0, 10.0]
+  # Standard ASTM D6433-20 Figure 1 non-overlapping integer condition rating bands
+  good: [86, 100]
+  satisfactory: [71, 85]
+  fair: [56, 70]
+  poor: [41, 55]
+  very_poor: [26, 40]
+  serious: [11, 25]
+  failed: [0, 10]
+
+noise_floor:
+  # Optional crack noise floor tau in units of normalized short sides (length_px / 512).
+  # If total predicted crack skeleton length is below tau, crack deduct is set to 0.
+  tau_short_sides: 0.0
+

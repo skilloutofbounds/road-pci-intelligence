@@ -148,6 +148,51 @@ class TestSPCI(unittest.TestCase):
 
         print(f"[TEST 06] Deterministic across 10 repetitions: sPCI={res_first['spci']}, CDV={res_first['cdv']}")
 
+    def test_07_astm_d6433_rating_bands(self):
+        """ASTM D6433 Figure 1 integer rating bands are non-overlapping and correctly classified."""
+        from src.spci import get_condition_class
+        cases = [
+            (100.0, "Good"),
+            (86.0, "Good"),
+            (85.6, "Good"),
+            (85.4, "Satisfactory"),
+            (85.0, "Satisfactory"),
+            (71.0, "Satisfactory"),
+            (70.4, "Fair"),
+            (70.0, "Fair"),
+            (56.0, "Fair"),
+            (55.4, "Poor"),
+            (41.0, "Poor"),
+            (40.4, "Very Poor"),
+            (26.0, "Very Poor"),
+            (25.4, "Serious"),
+            (11.0, "Serious"),
+            (10.4, "Failed"),
+            (0.0, "Failed"),
+        ]
+        for score, expected in cases:
+            actual = get_condition_class(score)
+            self.assertEqual(actual, expected, f"Score {score} gave {actual}, expected {expected}")
+        print("[TEST 07] ASTM D6433 integer rating bands verified across all boundaries.")
+
+    def test_08_noise_floor_tau(self):
+        """Noise floor tau suppresses crack deducts when skeleton length < tau."""
+        mask_c = np.zeros((512, 512), dtype=np.uint8)
+        mask_c[255:258, 100:150] = 1 # length ~50 px -> ~0.098 short sides
+
+        # With tau = 0.0 (no noise floor), deduct is positive
+        res_tau0 = compute_spci(crack_mask=mask_c, pothole_mask=None, config=self.config, noise_floor_tau=0.0)
+        self.assertLess(res_tau0['spci'], 100.0)
+        self.assertGreater(res_tau0['cdv'], 0.0)
+
+        # With tau = 0.2 (above ~0.098 short sides), deduct is zero
+        res_tau02 = compute_spci(crack_mask=mask_c, pothole_mask=None, config=self.config, noise_floor_tau=0.2)
+        self.assertEqual(res_tau02['spci'], 100.0)
+        self.assertEqual(res_tau02['cdv'], 0.0)
+        self.assertEqual(res_tau02['condition_class'], "Good")
+        print(f"[TEST 08] Noise floor tau verified: tau=0 -> sPCI={res_tau0['spci']}, tau=0.2 -> sPCI={res_tau02['spci']}")
+
 
 if __name__ == '__main__':
     unittest.main()
+
