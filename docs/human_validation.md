@@ -68,8 +68,18 @@ The following cryptographic Git commits and timestamps document that the sPCI mo
 - **Mean Paired Difference**: $+2.13\text{ percentage points}$ ($+0.0213$)
 - **95% Bootstrap CI (10,000 resamples, seed 42)**: **$[-2.13\%, +7.45\%]$**
 
-**Pre-Registered Interpretation**:
-The 95% bootstrap confidence interval $[-2.13\%, +7.45\%]$ spans zero. Per the pre-registered decision rule, there is **no detectable difference** between sPCI and the naive damage area baseline on this test sample ($N=47$). While sPCI achieves strong absolute agreement on cracks (88.2% on CRACK500, 93.8% on Road Crack), its overall advantage over simple surface coverage is not statistically significant.
+| Subset / Source | Valid Pairs ($N$) | Ties | sPCI Agreement (95% CI) | Area Baseline Agreement (95% CI) | Paired Difference sPCI - Area (95% CI) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Overall** | 47 | 2 | **76.60%** [64.89%, 87.23%] | **74.47%** [61.70%, 85.11%] | **+2.13%** [-2.13%, +7.45%] |
+| `crack500` | 17 | 0 | **88.24%** [70.59%, 100.00%] | **82.35%** [64.71%, 100.00%] | **+5.88%** [+0.00%, +17.65%] |
+| `road_crack` | 16 | 0 | **93.75%** [81.25%, 100.00%] | **93.75%** [81.25%, 100.00%] | **+0.00%** [+0.00%, +0.00%] |
+| **Cracks Combined** (`crack500` + `road_crack`) | 33 | 0 | **90.91%** [78.79%, 100.00%] | **87.88%** [75.76%, 96.97%] | **+3.03%** [+0.00%, +9.09%] |
+| `pothole` | 14 | 2 | **42.86%** [17.86%, 67.86%] | **42.86%** [14.29%, 71.43%] | **+0.00%** [-10.71%, +10.71%] |
+
+**Plain Summary**:
+- **Overall**: No detectable difference vs the damage area baseline (+2.13 percentage points, 95% CI: [-2.13%, +7.45%], which includes 0).
+- **Crack Distress**: Strong alignment with human judgment across both crack sources: **30 / 33 pairs agreed** (**90.91%**, 95% CI: [78.79%, 100.00%]), performing identically to the ground-truth sPCI reference.
+- **Pothole Distress**: Poor alignment with human judgment: **6.0 / 14 pairs agreed** (**42.86%**, 95% CI: [17.86%, 67.86%]). Crucially, the 95% confidence interval spans 50.0% (random chance), meaning sPCI performance on pothole pairs cannot be distinguished from guessing.
 
 ---
 
@@ -94,20 +104,26 @@ A total of 12 pairs had agreement scores $< 1.0$ (10 full disagreements, 2 ties)
 | `pair_004` | `crack500` | **A** | 65.24 | 62.05 | **B** | 3.19 | 0.0 | Close crack coverage; model penalized slightly longer skeleton in B. |
 | `pair_007` | `crack500` | **A** | 59.27 | 44.79 | **B** | 14.48 | 0.0 | Image B had multiple branches triggering network factor multiplier ($m > 1.2$). |
 | `pair_037` | `road_crack` | **B** | 37.14 | 40.97 | **A** | 3.83 | 0.0 | Close score difference (3.83 pts); image A had slightly thicker crack width. |
-| `pair_042` | `pothole` | **A** | 37.84 | 23.31 | **B** | 14.53 | 0.0 | 2D area in B exceeded A, but human prioritized perceived depth in A. |
-| `pair_043` | `pothole` | **A** | 15.59 | 2.83 | **B** | 12.76 | 0.0 | Pothole footprint in B larger; human favored severe localized edge break in A. |
-| `pair_044` | `pothole` | **A** | 0.00 | 0.00 | **Tie** | 0.00 | 0.5 | Both images exceeded 10% pothole area, saturating deduct curve at 0.00 sPCI. |
-| `pair_045` | `pothole` | **A** | 73.03 | 53.65 | **B** | 19.38 | 0.0 | Shallow spread in B yielded larger 2D mask than deeper cavity in A. |
-| `pair_048` | `pothole` | **B** | 0.00 | 25.08 | **A** | 25.08 | 0.0 | Massive surface patch in A saturated sPCI to 0.00. |
-| `pair_049` | `pothole` | **A** | 53.09 | 0.00 | **B** | 53.09 | 0.0 | Image B had substantial surface hole saturating sPCI to 0.00. |
-| `pair_053` | `pothole` | **A** | 28.94 | 0.00 | **B** | 28.94 | 0.0 | Large footprint in B saturated sPCI to 0.00. |
-| `pair_054` | `pothole` | **B** | 2.20 | 22.71 | **A** | 20.51 | 0.0 | Image A had larger 2D bounding area; human focused on cavity sharpness in B. |
+| `pair_042` | `pothole` | **A** | 37.84 | 23.31 | **B** | 14.53 | 0.0 | 2D area in B exceeded A, but human rater selected A as worse. |
+| `pair_043` | `pothole` | **A** | 15.59 | 2.83 | **B** | 12.76 | 0.0 | Pothole footprint in B larger; human rater selected A as worse. |
+| `pair_044` | `pothole` | **A** | 0.00 | 0.00 | **Tie** | 0.00 | 0.5 | Both images exceeded ~10% pothole area, saturating deduct curve to 0.00 sPCI. |
+| `pair_045` | `pothole` | **A** | 73.03 | 53.65 | **B** | 19.38 | 0.0 | Pothole area in B larger than A; human rater selected A as worse. |
+| `pair_048` | `pothole` | **B** | 0.00 | 25.08 | **A** | 25.08 | 0.0 | Large surface patch in A saturated sPCI to 0.00; human rater picked B. |
+| `pair_049` | `pothole` | **A** | 53.09 | 0.00 | **B** | 53.09 | 0.0 | Image B had substantial surface hole saturating sPCI to 0.00; human rater picked A. |
+| `pair_053` | `pothole` | **A** | 28.94 | 0.00 | **B** | 28.94 | 0.0 | Large footprint in B saturated sPCI to 0.00; human rater picked A. |
+| `pair_054` | `pothole` | **B** | 2.20 | 22.71 | **A** | 20.51 | 0.0 | Image A had larger 2D area; human rater selected B as worse. |
 | `pair_058` | `pothole` | **A** | 0.00 | 0.00 | **Tie** | 0.00 | 0.5 | Both images saturated deduct curve to 0.00 sPCI (exact tie). |
 
+A visual grid of representative disagreeing pairs is saved at:
+- File path: `docs/figures/human_agreement_disagreements.png`
+
 ### Qualitative Observations on Disagreements
-1. **Deduct Curve Saturation on Potholes**: Pothole deduct coefficients ($a=100, 160, 240, b=0.6$) drive sPCI rapidly toward $0.00$ whenever aggregate pothole area exceeds ~8–10% of the field of view. When two severely deteriorated roads were paired (e.g. `pair_044`, `pair_058`), both scored 0.00 sPCI, making distinction impossible under sPCI v1.
-2. **Missing 3D Depth Cues**: 2D monocular segmentation measures only projected surface area ($q_{\text{pot}}$). Human raters heavily weight vertical cavity depth, shadowing, and sharp vertical edges, which cannot be recovered from 2D RGB imagery alone.
-3. **High Fidelity on Crack Distress**: In contrast to potholes, crack rankings demonstrated excellent alignment (88.2% on CRACK500, 93.8% on Road Crack), validating the effectiveness of normalized skeleton length, width severity thresholding, and topological network multipliers.
+1. **Deduct Curve Saturation on Potholes**: Deduct curves are power functions:
+   $$\text{DV} = \min(100.0, a \cdot q^b)$$
+   where for potholes $a \in [100, 160, 240]$ and $b = 0.60$. Because $a \ge 100$, when aggregate pothole area fraction $q_{\text{pot}} \ge 0.10$ (10%), $\text{DV} \ge 100 \cdot (0.1)^{0.6} \approx 25.1$ even at low severity, and at high severity reaches 100.0, rapidly driving sPCI toward $0.00$. When two severely deteriorated roads were paired (e.g. `pair_044`, `pair_058`), both saturated to 0.00 sPCI, making distinction impossible under sPCI v1.
+2. **Missing 3D Depth Cues (Untested Hypothesis)**: 2D monocular segmentation measures only projected surface area ($q_{\text{pot}}$). One plausible but untested hypothesis is that human raters may heavily weight vertical cavity depth, shadowing, and sharp vertical edges, which cannot be measured from 2D RGB imagery alone.
+3. **Alternative Hypothesis (Camera Perspective & Scale Ambiguity)**: Because there is no metric pixel scale (ground-sampling distance, GSD) across diverse uncalibrated smartphone and dashboard images, image-relative pothole size (fraction of image area) is not physically comparable between photos taken with different camera distances, heights, or angles. A small pothole photographed close to the ground can occupy 25% of the frame, whereas a massive crater photographed from a vehicle dashboard 5 meters away may occupy only 5% of the frame.
+4. **High Fidelity on Crack Distress**: In contrast to potholes, crack rankings demonstrated excellent alignment (88.2% on CRACK500, 93.8% on Road Crack; 30/33 combined = 90.91%), validating the effectiveness of normalized skeleton length, width severity thresholding, and topological network multipliers.
 
 ---
 

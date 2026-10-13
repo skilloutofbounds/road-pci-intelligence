@@ -79,8 +79,8 @@ flowchart LR
   - Design Documentation: [`docs/pci_design.md`](docs/pci_design.md) documenting definitions, units, scale-invariance assumptions, and validation plans.
 - [x] **Step 4B: Automated Simplified PCI (sPCI) Engine & Freeze** *(Done)*:
   - Rating Scale Alignment: Standard ASTM D6433 7-band pavement condition rating scale (86–100 Good, 71–85 Satisfactory, 56–70 Fair, 41–55 Poor, 26–40 Very Poor, 11–25 Serious, 0–10 Failed).
-  - Continuous Deduct Curves: Calibrated sigmoid deduct curves for crack distress ($D_{\text{crack}} = 65 \cdot \sigma(12 \cdot (d - 0.08))$) and pothole distress ($D_{\text{pothole}} = 80 \cdot \sigma(30 \cdot (a - 0.04))$).
-  - Multi-Distress Deduct Correction: Softmax CDV interaction $\beta=0.85$, $m=0.75$, noise floor $\tau=0.00$.
+  - Calibrated Deduct Curves: Calibrated power deduct curves $\text{DV} = \min(100, a \cdot q^b)$ with empirical parameters ($a \in [5, 12, 25], b=0.75$ for cracks; $a \in [100, 160, 240], b=0.60$ for potholes) and network topology multiplier $m$.
+  - Multi-Distress Deduct Aggregation: Multiplicative Corrected Deduct Value $\text{CDV} = 100 \cdot (1 - \prod (1 - \text{DV}_i/100))$, noise floor $\tau = 0.00$.
   - Implementation & Configuration: [`src/spci.py`](src/spci.py) and [`configs/spci_params.yaml`](configs/spci_params.yaml) verified and frozen under git tag `spci-v1-frozen`.
   - Comprehensive Unit Tests: [`tests/test_spci.py`](tests/test_spci.py) passing 10/10 tests (boundary values, monotone severity, scale invariance, empty masks).
 - [x] **Step 4C: Human-Agreement Validation & Test Split Evaluation** *(Done)*:

@@ -1,0 +1,73 @@
+# ==============================================================================
+# SIMULATION PARAMETERS CONFIGURATION (Step 5A)
+# ALL COSTS AND DETERIORATION RATES ARE ILLUSTRATIVE ASSUMPTIONS.
+# Do not interpret as empirical municipality costs or actual pavement savings.
+# ==============================================================================
+
+network:
+  n_segments: 200                  # Number of road segments in synthetic network
+  seed: 42                         # Network topology generation seed
+  length_min_m: 100.0              # Min segment length in meters (uniform [100, 600])
+  length_max_m: 600.0              # Max segment length in meters
+  width_min_m: 6.0                 # Min segment width in meters (uniform [6, 14])
+  width_max_m: 14.0                # Max segment width in meters
+  traffic_classes:                 # Traffic distribution and priority weights
+    low:
+      share: 0.50
+      weight: 1.0
+    medium:
+      share: 0.35
+      weight: 2.0
+    high:
+      share: 0.15
+      weight: 3.0
+  tiles_per_segment: 6             # Number of image tiles sampled per segment (k = 6)
+  default_tile_pool: "all"         # "all" (455 val+test) or "cracks" (crack500 + road_crack)
+
+deterioration:
+  # Yearly loss: dPCI = r * f(PCI), floor at 0
+  # r ~ Lognormal(median=3.0, sigma=0.30)
+  median_rate: 3.0                 # Points per year (parameter range: [1.5, 6.0])
+  sigma: 0.30                      # Lognormal scale parameter (parameter range: [0.15, 0.50])
+  inflection_pci: 70.0             # f(PCI) = 1 + (70 - PCI)/70 for PCI < 70, 1 otherwise
+  pci_min: 0.0
+  pci_max: 100.0
+
+treatments:
+  # Relative illustrative cost per m2 (cost units)
+  none:
+    cost_per_m2: 0.0
+  preventive:
+    cost_per_m2: 1.0               # Illustrative cost unit (parameter range: [0.5, 2.0])
+    min_pci_eligibility: 55.0      # Only effective if PCI >= 55
+    max_pci_gain: 15.0             # Raises PCI by up to 15 points
+    pci_cap: 95.0                  # Capped at PCI 95
+  rehabilitation:
+    cost_per_m2: 5.0               # Illustrative cost unit (cost ratios: 3, 5, 8)
+    outcome_pci_min: 85.0          # Resets PCI uniformly in [85, 95]
+    outcome_pci_max: 95.0
+  reconstruction:
+    cost_per_m2: 12.0              # Illustrative cost unit (parameter range: [10.0, 16.0])
+    outcome_pci: 100.0             # Resets PCI to 100.0
+
+budget:
+  # Annual budget = cost of rehabilitating X% of network area
+  # Budget = (rehab_cost_per_m2) * (network_area * X / 100)
+  percentage_levels: [5, 10, 20]   # X in {5, 10, 20}%
+  default_percentage: 10
+  horizon_years: 10                # Simulation horizon in years
+  rollover: false                  # Unspent budget does not roll over
+
+policies:
+  - "P0_do_nothing"
+  - "P1_reactive"
+  - "P2_worst_first_by_band"
+  - "P3_greedy_benefit_cost"
+  - "P4_integer_programming"
+
+solver:
+  type: "scipy_milp"               # Exact 0/1 Integer Programming solver via scipy.optimize.milp (HiGHS)
+
+monte_carlo:
+  n_runs: 200                      # Monte Carlo runs per scenario
+  base_seed: 1000                  # Base seed for deterioration and treatment stochasticity

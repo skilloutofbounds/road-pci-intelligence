@@ -177,51 +177,58 @@ def main():
     print(f"sPCI Ties (|sPCI_A - sPCI_B| < 1.0): {spci_ties}")
     print("=" * 80)
 
+    # 1b. Same labels per source
+    print("\nPAIR COUNTS PER SOURCE:")
+    for src in ['crack500', 'road_crack', 'pothole']:
+        src_all = df[df['source'] == src]
+        n_same_src = int(np.sum(src_all['human_label'] == 'same'))
+        n_valid_src = len(src_all) - n_same_src
+        print(f"  • {src:<12}: Total = {len(src_all):2d} | Valid = {n_valid_src:2d} | 'same' = {n_same_src:2d}")
+
     # 1. Overall Agreement
     spci_scores = np.array(valid_df['spci_score'])
     mean_spci, spci_ci_low, spci_ci_high = bootstrap_ci(spci_scores)
     print(f"\nOVERALL sPCI AGREEMENT: {mean_spci * 100:.2f}% (95% CI: [{spci_ci_low * 100:.2f}%, {spci_ci_high * 100:.2f}%])")
 
-    # 2. Per-Source Agreement
+    # 2. Per-Source Agreement & Baseline & Paired Difference
     sources = ['crack500', 'road_crack', 'pothole']
-    source_results = {}
+    print("\nPER-SOURCE DETAILED BREAKDOWN:")
     for src in sources:
         src_df = valid_df[valid_df['source'] == src]
-        src_scores = np.array(src_df['spci_score'])
+        src_spci = np.array(src_df['spci_score'])
+        src_area = np.array(src_df['area_score'])
         n_src = len(src_df)
-        src_ties = int(np.sum(src_scores == 0.5))
-        mean_s, low_s, high_s = bootstrap_ci(src_scores)
-        source_results[src] = {
-            'n': n_src,
-            'ties': src_ties,
-            'agreement': mean_s,
-            'ci_low': low_s,
-            'ci_high': high_s
-        }
-        print(f"  • {src:<12}: N = {n_src:2d} | Ties = {src_ties:2d} | Agreement = {mean_s * 100:6.2f}% (95% CI: [{low_s * 100:6.2f}%, {high_s * 100:6.2f}%])")
+        src_ties = int(np.sum(src_spci == 0.5))
+        mean_s, low_s, high_s = bootstrap_ci(src_spci)
+        mean_a, low_a, high_a = bootstrap_ci(src_area)
+        mean_d, low_d, high_d = bootstrap_paired_diff_ci(src_spci, src_area)
+        print(f"  • {src:<12} (N = {n_src:2d}, Ties = {src_ties:2d}):")
+        print(f"      sPCI Agreement        : {mean_s * 100:6.2f}% ({np.sum(src_spci):.1f}/{n_src}) [95% CI: {low_s * 100:6.2f}%, {high_s * 100:6.2f}%]")
+        print(f"      Damage Area Baseline  : {mean_a * 100:6.2f}% ({np.sum(src_area):.1f}/{n_src}) [95% CI: {low_a * 100:6.2f}%, {high_a * 100:6.2f}%]")
+        print(f"      Paired Diff (sPCI-Area): {mean_d * 100:+6.2f}% [95% CI: {low_d * 100:+6.2f}%, {high_d * 100:+6.2f}%]")
 
-    # 3. Baselines
+    # 3. Combined Cracks (CRACK500 + Road Crack, N=33)
+    cr_df = valid_df[valid_df['source'].isin(['crack500', 'road_crack'])]
+    cr_spci = np.array(cr_df['spci_score'])
+    cr_area = np.array(cr_df['area_score'])
+    cr_gt = np.array(cr_df['gt_score'])
+    mean_cr_s, low_cr_s, high_cr_s = bootstrap_ci(cr_spci)
+    mean_cr_a, low_cr_a, high_cr_a = bootstrap_ci(cr_area)
+    mean_cr_d, low_cr_d, high_cr_d = bootstrap_paired_diff_ci(cr_spci, cr_area)
+    mean_cr_gt, low_cr_gt, high_cr_gt = bootstrap_ci(cr_gt)
+    print(f"\nCRACK PAIRS COMBINED (crack500 + road_crack, N = {len(cr_df)}):")
+    print(f"  • sPCI Agreement         : {mean_cr_s * 100:6.2f}% ({np.sum(cr_spci):.1f}/{len(cr_df)}) [95% CI: {low_cr_s * 100:6.2f}%, {high_cr_s * 100:6.2f}%]")
+    print(f"  • Damage Area Baseline   : {mean_cr_a * 100:6.2f}% ({np.sum(cr_area):.1f}/{len(cr_df)}) [95% CI: {low_cr_a * 100:6.2f}%, {high_cr_a * 100:6.2f}%]")
+    print(f"  • Paired Diff (sPCI-Area) : {mean_cr_d * 100:+6.2f}% [95% CI: {low_cr_d * 100:+6.2f}%, {high_cr_d * 100:+6.2f}%]")
+    print(f"  • GT sPCI Reference      : {mean_cr_gt * 100:6.2f}% ({np.sum(cr_gt):.1f}/{len(cr_df)}) [95% CI: {low_cr_gt * 100:6.2f}%, {high_cr_gt * 100:6.2f}%]")
+
+    # 4. Overall Baseline & Paired Difference
     area_scores = np.array(valid_df['area_score'])
     mean_area, area_ci_low, area_ci_high = bootstrap_ci(area_scores)
-    print(f"\nBASELINES:")
-    print(f"  • Damage Area Baseline : {mean_area * 100:.2f}% (95% CI: [{area_ci_low * 100:.2f}%, {area_ci_high * 100:.2f}%])")
-    print(f"  • Random Guessing      : 50.00%")
-
-    # Reference GT sPCI for crack500 and road_crack
-    cr_df = valid_df[valid_df['source'].isin(['crack500', 'road_crack'])]
-    cr_gt_scores = np.array(cr_df['gt_score'])
-    cr_spci_scores = np.array(cr_df['spci_score'])
-    mean_cr_gt, cr_gt_low, cr_gt_high = bootstrap_ci(cr_gt_scores)
-    mean_cr_pred, cr_pred_low, cr_pred_high = bootstrap_ci(cr_spci_scores)
-    print(f"  • GT sPCI Reference (CRACK500 + Road Crack, N={len(cr_df)}): {mean_cr_gt * 100:.2f}% (95% CI: [{cr_gt_low * 100:.2f}%, {cr_gt_high * 100:.2f}%])")
-    print(f"    (vs Pred sPCI on same subset: {mean_cr_pred * 100:.2f}%)")
-
-    # 4. Paired Difference (sPCI - Area Baseline)
     mean_diff, diff_ci_low, diff_ci_high = bootstrap_paired_diff_ci(spci_scores, area_scores)
-    print(f"\nPAIRED DIFFERENCE (sPCI Agreement - Area Baseline Agreement):")
-    print(f"  • Mean Difference: {mean_diff * 100:+.2f} percentage points")
-    print(f"  • 95% Bootstrap CI: [{diff_ci_low * 100:+.2f}%, {diff_ci_high * 100:+.2f}%]")
-
+    print(f"\nOVERALL BASELINE & PAIRED DIFFERENCE (N = {n_valid}):")
+    print(f"  • Damage Area Baseline  : {mean_area * 100:.2f}% (95% CI: [{area_ci_low * 100:.2f}%, {area_ci_high * 100:.2f}%])")
+    print(f"  • Paired Diff (sPCI-Area): {mean_diff * 100:+.2f}% [95% CI: [{diff_ci_low * 100:+.2f}%, {diff_ci_high * 100:+.2f}%]")
     if diff_ci_low > 0:
         verdict = "sPCI is statistically significantly BETTER than the area baseline (CI strictly excludes 0)."
     elif diff_ci_high < 0:
