@@ -92,8 +92,12 @@ flowchart LR
     - Pothole: **42.86%** (6/14, 5 full + 2 ties @ 0.5)
   - Baseline Comparison: Damage Area Baseline **74.47%** (35/47, 95% CI: [61.70%, 85.11%]). Paired difference $+2.13\%$ (95% CI: $[-2.13\%, +7.45\%]$) — confirmed pre-registered interpretation of *no detectable difference*.
   - Full Test Split Benchmark ($N=200$ images, GT vs Predicted sPCI): CRACK500 Spearman $\rho = 0.9038$ ($\text{MAE} = 6.81$), Road Crack $\rho = 0.7547$ ($\text{MAE} = 11.80$), Pothole $\rho = 0.8123$ ($\text{MAE} = 10.28$).
-  - Documentation: [`docs/human_validation.md`](docs/human_validation.md).
-- [ ] **Step 5: Budget-Constrained Optimization Engine** (Knapsack / priority repair simulations)
+- [x] **Step 5A: Budget-Constrained Maintenance Simulation (Synthetic Network)** *(Done)*:
+  - Synthetic Road Network: 200 segments ($668,193\text{ m}^2$) with lognormal accelerated deterioration ($d\text{PCI} = r \cdot f(\text{PCI})$) and $k=6$ sampled inspection tiles from [`results/tile_scores.csv`](results/tile_scores.csv).
+  - Maintenance Policies: P0 (do nothing), P1 (reactive worst-first), P2 (band-based worst-first), P3 (greedy benefit/cost heuristic), and P4 (exact 0/1 integer linear program via `scipy.optimize.milp` HiGHS branch-and-cut solver).
+  - Monte Carlo & Sensitivity Engine: 200 paired runs per base scenario, information regret analysis (oracle vs estimated sPCI decisions), and full 18-cell sensitivity grid across budgets $\{5, 10, 20\}\%$, cost ratios $\{3, 5, 8\}$, and tile pools (`all` vs `cracks only`).
+  - Unit Test Suite: [`tests/test_simulation.py`](tests/test_simulation.py) passing 7/7 tests (budget limits, PCI bounds, monotonicity, P4 $\ge$ P3 benefit, brute-force optimality).
+  - Comprehensive Documentation: [`docs/simulation.md`](docs/simulation.md) documenting illustrative assumptions, limitations, empirical results, and figures.
 - [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
 
 ---
