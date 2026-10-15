@@ -39,9 +39,11 @@ treatments:
     cost_per_m2: 0.0
   preventive:
     cost_per_m2: 1.0               # Illustrative cost unit (parameter range: [0.5, 2.0])
-    min_pci_eligibility: 55.0      # Only effective if PCI >= 55
+    min_pci_eligibility: 55.0      # Only effective if PCI >= 55 (cliff mode)
     max_pci_gain: 15.0             # Raises PCI by up to 15 points
     pci_cap: 95.0                  # Capped at PCI 95
+    smooth_min_pci: 40.0           # Smooth mode: zero gain at <= 40 PCI
+    smooth_full_pci: 70.0          # Smooth mode: full 15 gain at >= 70 PCI
   rehabilitation:
     cost_per_m2: 5.0               # Illustrative cost unit (cost ratios: 3, 5, 8)
     outcome_pci_min: 85.0          # Resets PCI uniformly in [85, 95]
@@ -52,11 +54,13 @@ treatments:
 
 budget:
   # Annual budget = cost of rehabilitating X% of network area
-  # Budget = (rehab_cost_per_m2) * (network_area * X / 100)
+  # Scaling mode: Budget = (rehab_cost_per_m2) * (network_area * X / 100)
+  # Fixed mode:   Budget = 5.0 * (network_area * X / 100)
   percentage_levels: [5, 10, 20]   # X in {5, 10, 20}%
   default_percentage: 10
   horizon_years: 10                # Simulation horizon in years
   rollover: false                  # Unspent budget does not roll over
+  fixed_ref_rehab_cost: 5.0        # Reference cost unit for fixed absolute budget grid
 
 policies:
   - "P0_do_nothing"
@@ -69,5 +73,9 @@ solver:
   type: "scipy_milp"               # Exact 0/1 Integer Programming solver via scipy.optimize.milp (HiGHS)
 
 monte_carlo:
-  n_runs: 200                      # Monte Carlo runs per scenario
+  n_runs: 100                      # Monte Carlo runs per scenario for sensitivity grid (100 runs)
+  base_runs: 200                   # Monte Carlo runs for base scenario (200 runs)
   base_seed: 1000                  # Base seed for deterioration and treatment stochasticity
+
+information_quality:
+  noise_lambdas: [0.0, 0.5, 1.0, 1.5, 2.0]  # estimate = true + lambda * (predicted - true)

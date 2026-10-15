@@ -92,11 +92,16 @@ flowchart LR
     - Pothole: **42.86%** (6/14, 5 full + 2 ties @ 0.5)
   - Baseline Comparison: Damage Area Baseline **74.47%** (35/47, 95% CI: [61.70%, 85.11%]). Paired difference $+2.13\%$ (95% CI: $[-2.13\%, +7.45\%]$) — confirmed pre-registered interpretation of *no detectable difference*.
   - Full Test Split Benchmark ($N=200$ images, GT vs Predicted sPCI): CRACK500 Spearman $\rho = 0.9038$ ($\text{MAE} = 6.81$), Road Crack $\rho = 0.7547$ ($\text{MAE} = 11.80$), Pothole $\rho = 0.8123$ ($\text{MAE} = 10.28$).
-- [x] **Step 5A: Budget-Constrained Maintenance Simulation (Synthetic Network)** *(Done)*:
+- [x] **Step 5A & 5B: Budget-Constrained Maintenance Simulation & Refinements** *(Done)*:
   - Synthetic Road Network: 200 segments ($668,193\text{ m}^2$) with lognormal accelerated deterioration ($d\text{PCI} = r \cdot f(\text{PCI})$) and $k=6$ sampled inspection tiles from [`results/tile_scores.csv`](results/tile_scores.csv).
   - Maintenance Policies: P0 (do nothing), P1 (reactive worst-first), P2 (band-based worst-first), P3 (greedy benefit/cost heuristic), and P4 (exact 0/1 integer linear program via `scipy.optimize.milp` HiGHS branch-and-cut solver).
-  - Monte Carlo & Sensitivity Engine: 200 paired runs per base scenario, information regret analysis (oracle vs estimated sPCI decisions), and full 18-cell sensitivity grid across budgets $\{5, 10, 20\}\%$, cost ratios $\{3, 5, 8\}$, and tile pools (`all` vs `cracks only`).
-  - Unit Test Suite: [`tests/test_simulation.py`](tests/test_simulation.py) passing 7/7 tests (budget limits, PCI bounds, monotonicity, P4 $\ge$ P3 benefit, brute-force optimality).
+  - Spend Accounting & Utilization Audit: Corrected 10-year cumulative spend tracking ($\sum c_T \cdot A_i$). Discovered that P1 (Reactive) utilizes only 91.85% of budget in base scenario and 45.88% at 20% budget ($3.06\text{M}$ spent vs $6.68\text{M}$ available) because it exhausts segments with $\text{PCI} < 40$.
+  - Metric Realignment: Evaluated both Area-Weighted (AW) and Traffic-Weighted (TW) condition-years. In traffic-weighted terms (matching municipal route priorities), P4 dominates with 731.55 TW CY (+87.54 over P1, +69.89 over P2).
+  - Treatment-Model Sensitivity: Evaluated smooth effectiveness $\gamma = \text{clip}((\text{PCI} - 40)/30, 0, 1)$ showing that threshold attenuation reduces optimization regret on `all` pool while preserving P3/P4 dominance on `cracks`.
+  - Information-Quality & Noise Scaling: Benchmarked continuous noise scaling $\lambda \in \{0, 0.5, 1, 1.5, 2\}$ showing monotonic regret growth for benefit-cost policies; detailed P1 physical accounting (166.4 vs 180.1 treated segments, 0 reconstructions, 2.87M vs 3.07M spend).
+  - Dual Sensitivity Grids: Benchmarked 100 Monte Carlo runs across 18 parameter cells for both Grid 1 (scaling budget) and Grid 2 (fixed absolute budget) with paired bootstrap co-leader detection.
+  - Test Split Overlays: Archived 8-image test split overlays ([`docs/figures/test_overlays_crack500.png`](docs/figures/test_overlays_crack500.png), [`docs/figures/test_overlays_pothole.png`](docs/figures/test_overlays_pothole.png), [`docs/figures/test_overlays_road_crack.png`](docs/figures/test_overlays_road_crack.png)) and human agreement visual audit ([`docs/figures/human_agreement_disagreements.png`](docs/figures/human_agreement_disagreements.png)).
+  - Unit Test Suite: [`tests/test_simulation.py`](tests/test_simulation.py) passing 11/11 tests; entire repository suite passing 46/46 unit tests.
   - Comprehensive Documentation: [`docs/simulation.md`](docs/simulation.md) documenting illustrative assumptions, limitations, empirical results, and figures.
 - [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
 

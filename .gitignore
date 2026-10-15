@@ -45,6 +45,8 @@ data/
 outputs/
 scratch/
 *.png
+!docs/figures/
+!docs/figures/*.png
 *.pt
 *.pth
 *.npz

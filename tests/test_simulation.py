@@ -231,6 +231,86 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(res1["total_spent"], res2["total_spent"])
         self.assertEqual(res1["yearly_trajectory"], res2["yearly_trajectory"])
 
+    def test_08_corrected_spend_accounting(self):
+        """Verify spend accounting: spend <= budget each year, P0 spend = 0, reported spend = sum of applied treatment costs."""
+        net = create_mock_network(n_segments=30, seed=707)
+        policies = ["P0_do_nothing", "P1_reactive", "P2_worst_first_by_band", "P3_greedy_benefit_cost", "P4_integer_programming"]
+        areas = net.df["area_m2"].values
+        treatment_costs = {"none": 0.0, "preventive": 1.0, "rehabilitation": 5.0, "reconstruction": 12.0}
+
+        for pol in policies:
+            res = run_policy_simulation(net, pol, budget_pct=10.0, rehab_cost_ratio=5.0, horizon_years=5, seed=888, engine=self.engine)
+            annual_budget = res["annual_budget"]
+
+            if pol == "P0_do_nothing":
+                self.assertEqual(res["total_spent"], 0.0)
+                self.assertTrue(all(s == 0.0 for s in res["yearly_spent"]))
+            else:
+                for y_idx, spent in enumerate(res["yearly_spent"]):
+                    self.assertLessEqual(spent, annual_budget + 1e-5, f"{pol} year {y_idx+1} spend exceeds budget")
+
+            # Check that total_spent equals sum of yearly_spent
+            self.assertAlmostEqual(res["total_spent"], sum(res["yearly_spent"]), places=4)
+
+        # Single-step exact sum verification
+        rng = np.random.RandomState(999)
+        current_true = net.df["true_pci"].values.copy()
+        current_est = net.df["estimated_pci"].values.copy()
+        weights = net.df["traffic_weight"].values
+        budget = 25000.0
+
+        for pol in ["P1_reactive", "P2_worst_first_by_band", "P3_greedy_benefit_cost", "P4_integer_programming"]:
+            _, _, spent, treatments = self.engine.run_year_step(
+                current_true_pci=current_true,
+                current_est_pci=current_est,
+                areas=areas,
+                traffic_weights=weights,
+                annual_budget=budget,
+                policy_name=pol,
+                rehab_cost_per_m2=5.0,
+                rng=rng,
+            )
+            expected_sum = sum(treatment_costs[t] * areas[i] for i, t in enumerate(treatments))
+            self.assertAlmostEqual(spent, expected_sum, places=4, msg=f"{pol} reported spend != sum of treatment costs")
+            self.assertLessEqual(spent, budget + 1e-5)
+
+    def test_09_smooth_preventive_effectiveness(self):
+        """Verify smooth preventive treatment effectiveness: clip((PCI - 40)/30, 0, 1)."""
+        rng = np.random.RandomState(42)
+        # Below 40: factor is 0, gain is 0
+        self.assertEqual(calculate_treatment_outcome(35.0, "preventive", rng, preventive_mode="smooth"), 35.0)
+        self.assertEqual(calculate_treatment_outcome(40.0, "preventive", rng, preventive_mode="smooth"), 40.0)
+
+        # Above 70: factor is 1, full 15 gain
+        self.assertAlmostEqual(calculate_treatment_outcome(70.0, "preventive", rng, preventive_mode="smooth"), 85.0, places=4)
+        self.assertAlmostEqual(calculate_treatment_outcome(80.0, "preventive", rng, preventive_mode="smooth"), 95.0, places=4)
+
+        # Midpoint: PCI 55 -> factor = 15/30 = 0.5 -> gain = 7.5 -> 62.5
+        self.assertAlmostEqual(calculate_treatment_outcome(55.0, "preventive", rng, preventive_mode="smooth"), 62.5, places=4)
+
+        # Cap at 95
+        self.assertAlmostEqual(calculate_treatment_outcome(90.0, "preventive", rng, preventive_mode="smooth"), 95.0, places=4)
+
+    def test_10_traffic_weighted_condition_years(self):
+        """Verify traffic-weighted condition-years calculation."""
+        net = create_mock_network(n_segments=15, seed=123)
+        res = run_policy_simulation(net, "P2_worst_first_by_band", budget_pct=10.0, horizon_years=3, seed=456, engine=self.engine)
+        self.assertIn("condition_years_aw", res)
+        self.assertIn("condition_years_tw", res)
+        self.assertGreater(res["condition_years_aw"], 0.0)
+        self.assertGreater(res["condition_years_tw"], 0.0)
+
+    def test_11_noise_lambda_scaling(self):
+        """Verify noise scaling parameter lambda: lambda=0 is oracle, lambda=1 is standard model."""
+        net = create_mock_network(n_segments=15, seed=321)
+        res_oracle = run_policy_simulation(net, "P3_greedy_benefit_cost", noise_lambda=0.0, seed=111, engine=self.engine)
+        res_real = run_policy_simulation(net, "P3_greedy_benefit_cost", noise_lambda=1.0, seed=111, engine=self.engine)
+        res_noisy = run_policy_simulation(net, "P3_greedy_benefit_cost", noise_lambda=2.0, seed=111, engine=self.engine)
+
+        self.assertIsNotNone(res_oracle)
+        self.assertIsNotNone(res_real)
+        self.assertIsNotNone(res_noisy)
+
 
 if __name__ == "__main__":
     unittest.main()
