@@ -1,10 +1,10 @@
-# Budget-Constrained Pavement Maintenance Simulation (Step 5B)
+# Budget-Constrained Pavement Maintenance Simulation (Step 5C)
 
 ## 1. Executive Summary & Objective
 
-This document specifies the formulation, mathematical models, empirical simulation results, and architectural limitations of the budget-constrained pavement maintenance simulation engine (`src/simulation/`).
+This document specifies the formulation, mathematical models, empirical simulation results, error decomposition, and policy comparisons of the budget-constrained pavement maintenance simulation engine (`src/simulation/`).
 
-The objective is to evaluate how an automated pavement inspection system (specifically, the frozen deep multi-task segmentation model + simplified Pavement Condition Index, **sPCI v1**) interacts with municipal asset management policies under annual capital budget constraints. The simulation models a synthetic road network over a 10-year planning horizon, comparing five distinct maintenance policies (P0 through P4) under both estimated condition data and oracle ground-truth conditions.
+The objective is to evaluate how an automated pavement inspection system (specifically, the frozen deep multi-task segmentation model + simplified Pavement Condition Index, **sPCI v1**) interacts with municipal asset management policies under annual capital budget constraints. The simulation models a synthetic road network over a 10-year planning horizon, comparing six distinct maintenance policies (P0 through P4, plus heuristic baseline P2t) under both estimated condition data and oracle ground-truth conditions.
 
 > [!IMPORTANT]
 > **EXPLICIT DISCLAIMER**: All financial costs, treatment costs per square meter, treatment effectiveness thresholds, and deterioration rate parameters in this module are **ILLUSTRATIVE BENCHMARK ASSUMPTIONS**. They are established for algorithmic benchmarking, sensitivity analysis, and comparative policy ranking. **No claims are made regarding real municipality accounting, actual tax dollar savings, or physical infrastructure life-cycle guarantees.**
@@ -79,7 +79,7 @@ Because municipal stakeholders care both about physical pavement preservation an
 - **Traffic-Weighted Network Condition**:
   $$\text{PCI}_{\text{tw}, t} = \frac{\sum_{i=0}^{N-1} \text{PCI}_{i, t}^* \cdot A_i \cdot w_i}{\sum_{i=0}^{N-1} A_i \cdot w_i}, \quad \text{Condition-Years}_{\text{tw}} = \sum_{t=1}^{10} \text{PCI}_{\text{tw}, t}$$
 
-### 2.6 Maintenance Allocation Policies (P0 – P4)
+### 2.6 Maintenance Allocation Policies (P0 – P4, plus P2t)
 In each year $t$, policies evaluate candidate actions based on observed condition ($\widehat{\text{PCI}}$ in deployment; $\text{PCI}^*$ in oracle mode):
 1. **P0 (Do Nothing)**: Zero maintenance interventions; passive deterioration only. Total spend = 0.
 2. **P1 (Reactive / Worst-First Severe)**:
@@ -95,11 +95,16 @@ In each year $t$, policies evaluate candidate actions based on observed conditio
      - Fair ($56 - 70$): Preventive
      - Satisfactory / Good ($> 70$): None
    - Funded sequentially until annual budget is exhausted.
-4. **P3 (Greedy Benefit/Cost Heuristic)**:
+4. **P2t (Traffic-Aware Worst-First)**:
+   - Heuristic baseline assigning the exact same ASTM D6433 condition-band treatments as P2.
+   - However, candidate segments are prioritized in descending order of urgency score:
+     $$\text{Urgency}_i = (100.0 - \widehat{\text{PCI}}_i) \times w_i$$
+   - Funded sequentially until annual budget is exhausted.
+5. **P3 (Greedy Benefit/Cost Heuristic)**:
    - For all segments $i$ and eligible treatments $T$:
      $$\text{Benefit}_{i, T} = \Delta \widehat{P}_{i, T} \times A_i \times w_i, \quad \text{Cost}_{i, T} = c_T \times A_i, \quad \text{Ratio}_{i, T} = \frac{\text{Benefit}_{i, T}}{\text{Cost}_{i, T}}$$
    - Greedily selects candidate with highest benefit/cost ratio, at most one treatment per segment per year, until budget is exhausted.
-5. **P4 (Exact 0/1 Integer Linear Program)**:
+6. **P4 (Exact 0/1 Integer Linear Program)**:
    - Solves the exact single-year optimum knapsack allocation:
      $$\max_{x_{i, T} \in \{0, 1\}} \sum_{i=0}^{N-1} \sum_{T \in \mathcal{T}} \text{Benefit}_{i, T} \cdot x_{i, T}$$
      subject to:
@@ -108,54 +113,256 @@ In each year $t$, policies evaluate candidate actions based on observed conditio
 
 ---
 
-## 3. Spending Bug Audit & Base Scenario Results
+## 3. Error Structure of the Estimates
 
-### 3.1 Spending Discrepancy Investigation
-In the initial Step 5A report, the "Total Spent" column reported $3,340,965.0$ identically across P1 through P4. 
-- **Root Cause**: The previous report inadvertently transcribed the 10-year cumulative budget figure ($334,096.5 \times 10$) into the markdown table rather than the real spend column tracked by the simulation engine.
-- **Empirical Real Spend Finding**:
-  - The simulation engine's internal accounting tracks actual expenditure $\sum_i c_{T_i} A_i$.
-  - While P2, P3, and P4 utilize $>99.8\%$ of the annual budget, **P1 (Reactive) uses only 91.85% of the budget** ($3,068,687$ spent out of $3,340,965$), leaving approximately $272,000$ cost units unspent over 10 years because all segments with $\widehat{\text{PCI}} < 40$ are repaired.
-  - When budget is doubled to 20% ($6,681,929$), **P1 real spend remains at 3,065,995** (utilization drops to $45.88\%$). Reactive worst-first policies cannot productively absorb high capital allocations without expanding treatment eligibility to preventive preservation.
+To ground the simulation behavior, we report the empirical error structure of the vision model's sPCI estimates ($\text{Predicted sPCI} - \text{GT sPCI}$) across both tile pools and individual data sources.
 
-### 3.2 Base Scenario Performance Table (200 Monte Carlo Runs, Pool 'all')
-*Annual Budget: 10% of network rehab ($334,096.5$ units/yr), Rehab Ratio: 5.0, 200 runs (seeds 1000–1199):*
+### 3.1 Per-Tile Error Metrics
+*Evaluated on individual image tiles ($N$ tiles):*
 
-| Policy | Condition-Years (AW) [95% CI] | Condition-Years (TW) [95% CI] | Real Spend [95% CI] | Budget Util (%) | Eff AW (CY/1k) [95% CI] | Eff TW (CY/1k) [95% CI] |
+| Group | $N$ | Mean Signed Error | MAE | Std Dev |
+| :--- | :---: | :---: | :---: | :---: |
+| **pool: all** | 455 | -3.1080 | 9.2768 | 15.4001 |
+| **pool: cracks** | 287 | -3.5342 | 8.4718 | 13.0174 |
+| **source: crack500** | 142 | +0.5449 | 6.7061 | 8.4796 |
+| **source: road_crack** | 145 | -7.5289 | 10.2010 | 15.2863 |
+| **source: pothole** | 168 | -2.3799 | 10.6518 | 18.8067 |
+
+### 3.2 Segment Means Error Metrics ($k = 6$ Tiles per Segment)
+*Evaluated across $N = 200$ synthetic roadway segments formed by averaging $k=6$ tiles sampled with replacement:*
+
+| Group | $N$ Segments | Mean Signed Error | MAE | Std Dev (Empirical) | Std Dev (CLT Theoretical: $\sigma/\sqrt{6}$) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **pool: all** | 200 | -2.9493 | 4.8356 | 5.5699 | 6.2870 |
+| **pool: cracks** | 200 | -3.3907 | 4.7573 | 5.3560 | 5.3143 |
+| **source: crack500** | 200 | +1.1518 | 2.8673 | 3.4311 | 3.4618 |
+| **source: road_crack** | 200 | -8.2588 | 8.7019 | 6.5123 | 6.2406 |
+| **source: pothole** | 200 | -1.9974 | 5.8503 | 8.0079 | 7.6778 |
+
+**Key Observations on Error Structure**:
+1. In both pools, the model has a slight negative bias (underestimating sPCI by $-3.11$ points on `all`, and $-3.53$ points on `cracks`).
+2. Source-level breakdown shows distinct behavior: CRACK500 has near-zero bias ($+0.54$) and low variance ($\sigma = 8.48$), whereas Road Crack has a significant negative bias ($-7.53$) and Pothole has high variance ($\sigma = 18.81$).
+3. Segment-level aggregation ($k=6$) reduces standard deviation by approximately $1/\sqrt{6}$, matching Central Limit Theorem predictions closely (e.g., $5.36$ empirical vs $5.31$ theoretical on `cracks`).
+
+---
+
+## 4. Base Scenario Results with P2t Baseline
+
+*Annual Budget: 10% of network rehab ($334,096.5$ units/yr on `all`, $351,192.5$ on `cracks`), Rehab Ratio: 5.0, $N = 200$ Monte Carlo runs (seeds 1000–1199):*
+
+### 4.1 Base Table — Pool 'all' ($N = 200$ Runs)
+
+| Policy | AW CY [95% CI] | TW CY [95% CI] | Real Spend [95% CI] | Budget Util (%) | Eff AW (CY/1k) [95% CI] | Eff TW (CY/1k) [95% CI] |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **P0: Do Nothing** | 361.64 [361.34, 361.94] | 357.01 [356.69, 357.33] | 0 [0, 0] | 0.00% | 0.00 [0.00, 0.00] | 0.00 [0.00, 0.00] |
 | **P1: Reactive** | 642.80 [642.28, 643.31] | 644.01 [643.48, 644.53] | 3,068,687 [3,063,713, 3,073,385] | 91.85% | 0.0916 [0.0914, 0.0919] | 0.0935 [0.0933, 0.0938] |
 | **P2: Worst-First by Band** | 660.50 [660.22, 660.77] | 661.66 [661.33, 661.98] | 3,337,775 [3,337,667, 3,337,878] | 99.90% | 0.0895 [0.0894, 0.0896] | 0.0913 [0.0912, 0.0914] |
-| **P3: Greedy Benefit/Cost** | 655.83 [655.60, 656.05] | 730.70 [730.54, 730.87] | 3,337,105 [3,336,997, 3,337,212] | 99.88% | 0.0882 [0.0881, 0.0882] | 0.112 [0.112, 0.112] |
-| **P4: Integer Programming** | 656.77 [656.54, 656.99] | 731.55 [731.38, 731.71] | 3,339,967 [3,339,943, 3,339,990] | 99.97% | 0.0884 [0.0883, 0.0884] | 0.112 [0.112, 0.112] |
+| **P2t: Traffic-Aware Worst-First** | 626.94 [626.62, 627.25] | 672.45 [672.16, 672.73] | 3,336,948 [3,336,839, 3,337,055] | 99.88% | 0.0795 [0.0794, 0.0796] | 0.0945 [0.0944, 0.0946] |
+| **P3: Greedy Benefit/Cost** | 655.82 [655.60, 656.04] | 730.69 [730.52, 730.86] | 3,337,095 [3,336,986, 3,337,203] | 99.88% | 0.0882 [0.0881, 0.0882] | 0.112 [0.112, 0.112] |
+| **P4: Integer Programming** | 656.77 [656.54, 656.99] | 731.54 [731.37, 731.70] | 3,339,967 [3,339,943, 3,339,990] | 99.97% | 0.0884 [0.0883, 0.0884] | 0.112 [0.112, 0.112] |
 
-*Efficiency is defined as condition-years gained relative to P0 per 1,000 cost units of expenditure.*
-
-### 3.3 Paired Differences (Synchronized Random Seeds Across Policies)
-- **P1 (Reactive) vs. P0**:
-  - Area-Weighted: $+281.17\text{ CY}$ [95% CI: $+280.57, +281.75$]
-  - Traffic-Weighted: $+287.00\text{ CY}$ [95% CI: $+286.38, +287.60$]
-- **P2 (Worst-First by Band) vs. P0**:
-  - Area-Weighted: $+298.86\text{ CY}$ [95% CI: $+298.51, +299.20$]
-  - Traffic-Weighted: $+304.65\text{ CY}$ [95% CI: $+304.25, +305.05$]
-  - $\rightarrow$ vs. P1: $\text{AW} = +17.69$ [$+17.17, +18.23$], $\text{TW} = +17.65$ [$+17.10, +18.21$]
-- **P3 (Greedy Benefit/Cost) vs. P0**:
-  - Area-Weighted: $+294.19\text{ CY}$ [95% CI: $+293.91, +294.47$]
-  - Traffic-Weighted: $+373.69\text{ CY}$ [95% CI: $+373.42, +373.98$]
-  - $\rightarrow$ vs. P1: $\text{AW} = +13.02$ [$+12.47, +13.58$], $\text{TW} = +86.69$ [$+86.16, +87.23$]
-- **P4 (0/1 Integer Programming) vs. P0**:
-  - Area-Weighted: $+295.13\text{ CY}$ [95% CI: $+294.84, +295.42$]
-  - Traffic-Weighted: $+374.54\text{ CY}$ [95% CI: $+374.23, +374.83$]
-  - $\rightarrow$ vs. P1: $\text{AW} = +13.97$ [$+13.42, +14.52$], $\text{TW} = +87.54$ [$+87.00, +88.09$]
-
-### 3.4 Resolution of Metric Mismatch
-When evaluating area-weighted condition-years, P2 appears nominally superior (660.50 vs 656.77 for P4). However, P3 and P4 explicitly optimize traffic-weighted benefit $\Delta P \cdot A \cdot w$. When evaluating the traffic-weighted metric:
-- P4 achieves **731.55 TW CY**, outperforming P2 (661.66 TW CY) by **+69.89 TW CY** ($+10.6\%$) and outperforming P1 by **+87.54 TW CY**.
-- P4 efficiency in traffic-weighted terms reaches **0.112 CY/1k cost**, compared to 0.0913 for P2 and 0.0935 for P1.
+#### Paired Differences on Pool 'all' ($N = 200$ Runs):
+- **P2t minus P2**:
+  - Area-Weighted: $-33.56\text{ CY}$ [95% CI: $-33.88, -33.23$]
+  - Traffic-Weighted: $+10.79\text{ CY}$ [95% CI: $+10.43, +11.14$]
+- **P2t minus P3**:
+  - Area-Weighted: $-28.88\text{ CY}$ [95% CI: $-29.21, -28.54$]
+  - Traffic-Weighted: $-58.24\text{ CY}$ [95% CI: $-58.53, -57.95$]
+- **P2t minus P4**:
+  - Area-Weighted: $-29.82\text{ CY}$ [95% CI: $-30.16, -29.49$]
+  - Traffic-Weighted: $-59.09\text{ CY}$ [95% CI: $-59.38, -58.79$]
 
 ---
 
-## 4. Treatment-Model Sensitivity: Smooth Preventive Effectiveness
+### 4.2 Base Table — Pool 'cracks' ($N = 200$ Runs)
+
+| Policy | AW CY [95% CI] | TW CY [95% CI] | Real Spend [95% CI] | Budget Util (%) | Eff AW (CY/1k) [95% CI] | Eff TW (CY/1k) [95% CI] |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **P0: Do Nothing** | 545.44 [545.18, 545.70] | 548.37 [548.08, 548.66] | 0 [0, 0] | 0.00% | 0.00 [0.00, 0.00] | 0.00 [0.00, 0.00] |
+| **P1: Reactive** | 618.69 [618.36, 619.01] | 620.41 [620.08, 620.74] | 1,629,136 [1,623,010, 1,635,307] | 46.39% | 0.0450 [0.0448, 0.0451] | 0.0442 [0.0440, 0.0444] |
+| **P2: Worst-First by Band** | 774.99 [774.90, 775.09] | 776.28 [776.18, 776.39] | 1,738,324 [1,735,801, 1,740,889] | 49.50% | 0.132 [0.132, 0.132] | 0.131 [0.131, 0.131] |
+| **P2t: Traffic-Aware Worst-First** | 774.99 [774.90, 775.09] | 776.51 [776.41, 776.62] | 1,738,493 [1,735,935, 1,741,079] | 49.50% | 0.132 [0.132, 0.132] | 0.131 [0.131, 0.131] |
+| **P3: Greedy Benefit/Cost** | 810.89 [810.51, 811.28] | 845.26 [845.03, 845.49] | 3,507,799 [3,507,662, 3,507,935] | 99.89% | 0.0757 [0.0756, 0.0758] | 0.0846 [0.0845, 0.0847] |
+| **P4: Integer Programming** | 810.87 [810.48, 811.27] | 845.21 [844.97, 845.44] | 3,511,596 [3,511,587, 3,511,606] | 99.99% | 0.0756 [0.0755, 0.0757] | 0.0845 [0.0844, 0.0846] |
+
+#### Paired Differences on Pool 'cracks' ($N = 200$ Runs):
+- **P2t minus P2**:
+  - Area-Weighted: $-0.00\text{ CY}$ [95% CI: $-0.01, +0.00$]
+  - Traffic-Weighted: $+0.23\text{ CY}$ [95% CI: $+0.22, +0.23$]
+- **P2t minus P3**:
+  - Area-Weighted: $-35.90\text{ CY}$ [95% CI: $-36.28, -35.51$]
+  - Traffic-Weighted: $-68.75\text{ CY}$ [95% CI: $-68.98, -68.51$]
+- **P2t minus P4**:
+  - Area-Weighted: $-35.88\text{ CY}$ [95% CI: $-36.27, -35.49$]
+  - Traffic-Weighted: $-68.69\text{ CY}$ [95% CI: $-68.93, -68.46$]
+
+---
+
+## 5. Bias vs. Noise Decomposition Study
+
+To isolate the effects of systematic calibration error (bias) versus random inspection variance (noise), we run controlled decompositions across all policies on both pools ($N = 100$ runs per setting, synchronized random seeds).
+
+1. **Bias-Only Decomposition**:
+   $$\widehat{\text{PCI}} = \text{True PCI} + b, \quad b \in \{-10.0, -5.0, 0.0, +5.0, +10.0\}$$
+2. **Noise-Only Decomposition**:
+   $$\widehat{\text{PCI}} = \text{True PCI} + \lambda \times \left(\text{Predicted sPCI} - \text{True sPCI} - \text{MeanSignedError}_{\text{pool}}\right), \quad \lambda \in \{0.0, 0.5, 1.0, 1.5, 2.0\}$$
+   where subtracting $\text{MeanSignedError}_{\text{pool}}$ ensures the inspection noise is strictly zero-mean.
+3. Regret is defined relative to the oracle ($b = 0.0$ or $\lambda = 0.0$):
+   $$\text{Regret} = \text{Condition-Years}_{\text{oracle}} - \text{Condition-Years}_{\text{setting}}$$
+
+### 5.1 Complete Table 5.1: Bias-Only Decomposition ($N = 100$ Runs)
+
+| Pool | Bias $b$ | Policy | Regret AW [95% CI] | Regret TW [95% CI] | Mean AW CY | Mean TW CY |
+| :--- | :---: | :--- | :---: | :---: | :---: | :---: |
+| `all` | -10.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | -10.0 | P1: Reactive | -41.52 [-42.30, -40.74] | -41.54 [-42.34, -40.76] | 662.63 | 663.51 |
+| `all` | -10.0 | P2: Worst-First by Band | +21.19 [+19.41, +23.05] | +20.97 [+19.15, +22.84] | 644.28 | 645.31 |
+| `all` | -10.0 | P2t: Traffic-Aware Worst-First | +17.17 [+15.92, +18.51] | -0.45 [-1.36, +0.52] | 618.05 | 673.13 |
+| `all` | -10.0 | P3: Greedy Benefit/Cost | +115.02 [+114.54, +115.50] | +91.74 [+91.38, +92.11] | 603.87 | 682.73 |
+| `all` | -10.0 | P4: Integer Programming | +115.08 [+114.61, +115.54] | +90.77 [+90.42, +91.14] | 605.22 | 684.60 |
+| `all` | -5.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | -5.0 | P1: Reactive | -35.99 [-36.84, -35.15] | -36.00 [-36.86, -35.16] | 657.10 | 657.97 |
+| `all` | -5.0 | P2: Worst-First by Band | +0.76 [+0.36, +1.16] | +0.92 [+0.48, +1.37] | 664.71 | 665.36 |
+| `all` | -5.0 | P2t: Traffic-Aware Worst-First | +7.31 [+6.21, +8.54] | -3.40 [-4.17, -2.55] | 627.91 | 676.09 |
+| `all` | -5.0 | P3: Greedy Benefit/Cost | +70.41 [+69.90, +70.92] | +46.33 [+45.99, +46.68] | 648.48 | 728.14 |
+| `all` | -5.0 | P4: Integer Programming | +70.28 [+69.88, +70.70] | +45.71 [+45.44, +45.98] | 650.02 | 729.67 |
+| `all` | +0.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | +0.0 | P1: Reactive | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 621.11 | 621.97 |
+| `all` | +0.0 | P2: Worst-First by Band | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 665.47 | 666.28 |
+| `all` | +0.0 | P2t: Traffic-Aware Worst-First | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 635.22 | 672.69 |
+| `all` | +0.0 | P3: Greedy Benefit/Cost | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 718.89 | 774.48 |
+| `all` | +0.0 | P4: Integer Programming | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 720.30 | 775.38 |
+| `all` | +5.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | +5.0 | P1: Reactive | +40.38 [+39.18, +41.60] | +40.22 [+38.99, +41.45] | 580.73 | 581.75 |
+| `all` | +5.0 | P2: Worst-First by Band | +0.95 [+0.73, +1.16] | +0.84 [+0.60, +1.09] | 664.52 | 665.43 |
+| `all` | +5.0 | P2t: Traffic-Aware Worst-First | -14.06 [-16.16, -11.86] | -1.01 [-2.34, +0.41] | 649.28 | 673.70 |
+| `all` | +5.0 | P3: Greedy Benefit/Cost | -13.50 [-13.96, -13.05] | +0.11 [-0.18, +0.40] | 732.39 | 774.36 |
+| `all` | +5.0 | P4: Integer Programming | -12.08 [-12.53, -11.64] | +1.08 [+0.79, +1.36] | 732.38 | 774.30 |
+| `all` | +10.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | +10.0 | P1: Reactive | +79.58 [+78.45, +80.73] | +79.35 [+78.26, +80.46] | 541.53 | 542.62 |
+| `all` | +10.0 | P2: Worst-First by Band | +7.45 [+6.95, +7.96] | +7.38 [+6.85, +7.90] | 658.02 | 658.90 |
+| `all` | +10.0 | P2t: Traffic-Aware Worst-First | -13.80 [-15.16, -12.32] | +13.11 [+12.17, +14.12] | 649.02 | 659.58 |
+| `all` | +10.0 | P3: Greedy Benefit/Cost | +4.29 [+3.66, +4.93] | +22.05 [+21.61, +22.49] | 714.60 | 752.42 |
+| `all` | +10.0 | P4: Integer Programming | +5.14 [+4.54, +5.74] | +22.89 [+22.46, +23.31] | 715.16 | 752.49 |
+| `cracks` | -10.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | -10.0 | P1: Reactive | -52.66 [-53.27, -52.05] | -51.38 [-52.04, -50.73] | 662.45 | 663.71 |
+| `cracks` | -10.0 | P2: Worst-First by Band | +13.98 [+13.64, +14.30] | +14.33 [+13.95, +14.69] | 732.96 | 733.04 |
+| `cracks` | -10.0 | P2t: Traffic-Aware Worst-First | -54.11 [-54.45, -53.77] | -68.92 [-69.17, -68.66] | 801.05 | 816.28 |
+| `cracks` | -10.0 | P3: Greedy Benefit/Cost | +149.17 [+148.88, +149.46] | +93.20 [+93.01, +93.39] | 717.13 | 785.92 |
+| `cracks` | -10.0 | P4: Integer Programming | +148.87 [+148.60, +149.13] | +92.00 [+91.82, +92.17] | 717.74 | 787.31 |
+| `cracks` | -5.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | -5.0 | P1: Reactive | -25.26 [-25.74, -24.79] | -24.65 [-25.19, -24.11] | 635.06 | 636.98 |
+| `cracks` | -5.0 | P2: Worst-First by Band | -43.57 [-43.73, -43.41] | -43.56 [-43.74, -43.39] | 790.51 | 790.92 |
+| `cracks` | -5.0 | P2t: Traffic-Aware Worst-First | -43.49 [-43.67, -43.29] | -44.90 [-45.10, -44.70] | 790.42 | 792.26 |
+| `cracks` | -5.0 | P3: Greedy Benefit/Cost | +109.59 [+109.00, +110.18] | +62.77 [+62.41, +63.12] | 756.70 | 816.35 |
+| `cracks` | -5.0 | P4: Integer Programming | +109.06 [+108.34, +109.80] | +62.22 [+61.79, +62.65] | 757.54 | 817.09 |
+| `cracks` | +0.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | +0.0 | P1: Reactive | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 609.80 | 612.33 |
+| `cracks` | +0.0 | P2: Worst-First by Band | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 746.94 | 747.36 |
+| `cracks` | +0.0 | P2t: Traffic-Aware Worst-First | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 746.94 | 747.36 |
+| `cracks` | +0.0 | P3: Greedy Benefit/Cost | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 866.29 | 879.12 |
+| `cracks` | +0.0 | P4: Integer Programming | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 866.61 | 879.31 |
+| `cracks` | +5.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | +5.0 | P1: Reactive | +21.25 [+20.79, +21.73] | +21.05 [+20.55, +21.57] | 588.55 | 591.27 |
+| `cracks` | +5.0 | P2: Worst-First by Band | +44.76 [+44.58, +44.95] | +44.37 [+44.18, +44.56] | 702.17 | 703.00 |
+| `cracks` | +5.0 | P2t: Traffic-Aware Worst-First | +44.76 [+44.58, +44.95] | +44.37 [+44.18, +44.56] | 702.17 | 703.00 |
+| `cracks` | +5.0 | P3: Greedy Benefit/Cost | -7.09 [-7.29, -6.90] | -0.31 [-0.45, -0.18] | 873.38 | 879.43 |
+| `cracks` | +5.0 | P4: Integer Programming | -5.15 [-5.37, -4.94] | +1.05 [+0.90, +1.19] | 871.76 | 878.26 |
+| `cracks` | +10.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | +10.0 | P1: Reactive | +38.11 [+37.64, +38.60] | +37.94 [+37.42, +38.48] | 571.69 | 574.39 |
+| `cracks` | +10.0 | P2: Worst-First by Band | +84.22 [+84.01, +84.42] | +83.41 [+83.17, +83.65] | 662.72 | 663.96 |
+| `cracks` | +10.0 | P2t: Traffic-Aware Worst-First | +84.22 [+84.01, +84.42] | +83.41 [+83.17, +83.65] | 662.72 | 663.96 |
+| `cracks` | +10.0 | P3: Greedy Benefit/Cost | +5.10 [+4.92, +5.27] | +13.43 [+13.30, +13.56] | 861.20 | 865.69 |
+| `cracks` | +10.0 | P4: Integer Programming | +7.37 [+7.17, +7.56] | +15.38 [+15.22, +15.52] | 859.24 | 863.93 |
+
+---
+
+### 5.2 Complete Table 5.2: Noise-Only Decomposition ($N = 100$ Runs)
+
+| Pool | $\lambda$ | Policy | Regret AW [95% CI] | Regret TW [95% CI] | Mean AW CY | Mean TW CY |
+| :--- | :---: | :--- | :---: | :---: | :---: | :---: |
+| `all` | 0.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | 0.0 | P1: Reactive | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 621.11 | 621.97 |
+| `all` | 0.0 | P2: Worst-First by Band | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 665.47 | 666.28 |
+| `all` | 0.0 | P2t: Traffic-Aware Worst-First | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 635.22 | 672.69 |
+| `all` | 0.0 | P3: Greedy Benefit/Cost | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 718.89 | 774.48 |
+| `all` | 0.0 | P4: Integer Programming | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 720.30 | 775.38 |
+| `all` | 0.5 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | 0.5 | P1: Reactive | +3.48 [+2.44, +4.53] | +2.86 [+1.82, +3.92] | 617.63 | 619.11 |
+| `all` | 0.5 | P2: Worst-First by Band | +1.57 [+1.23, +1.90] | +1.35 [+0.99, +1.71] | 663.90 | 664.93 |
+| `all` | 0.5 | P2t: Traffic-Aware Worst-First | +1.81 [+0.55, +3.05] | +1.19 [+0.32, +2.03] | 633.40 | 671.50 |
+| `all` | 0.5 | P3: Greedy Benefit/Cost | +20.21 [+19.75, +20.66] | +14.06 [+13.79, +14.33] | 698.68 | 760.42 |
+| `all` | 0.5 | P4: Integer Programming | +19.94 [+19.51, +20.36] | +13.93 [+13.68, +14.18] | 700.36 | 761.45 |
+| `all` | 1.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | 1.0 | P1: Reactive | +2.13 [+1.24, +3.02] | +1.48 [+0.55, +2.41] | 618.98 | 620.50 |
+| `all` | 1.0 | P2: Worst-First by Band | +4.96 [+4.56, +5.36] | +4.67 [+4.21, +5.13] | 660.50 | 661.61 |
+| `all` | 1.0 | P2t: Traffic-Aware Worst-First | +8.35 [+7.17, +9.63] | +5.32 [+4.50, +6.21] | 626.87 | 667.37 |
+| `all` | 1.0 | P3: Greedy Benefit/Cost | +40.35 [+39.92, +40.79] | +30.24 [+29.94, +30.54] | 678.54 | 744.24 |
+| `all` | 1.0 | P4: Integer Programming | +40.96 [+40.49, +41.43] | +30.52 [+30.22, +30.81] | 679.34 | 744.86 |
+| `all` | 1.5 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | 1.5 | P1: Reactive | +1.82 [+1.02, +2.62] | +1.46 [+0.63, +2.29] | 619.29 | 620.51 |
+| `all` | 1.5 | P2: Worst-First by Band | +10.09 [+9.75, +10.45] | +9.99 [+9.58, +10.42] | 655.37 | 656.29 |
+| `all` | 1.5 | P2t: Traffic-Aware Worst-First | +16.24 [+15.03, +17.56] | +10.04 [+9.20, +10.96] | 618.97 | 662.65 |
+| `all` | 1.5 | P3: Greedy Benefit/Cost | +56.86 [+56.38, +57.33] | +45.76 [+45.43, +46.10] | 662.03 | 728.71 |
+| `all` | 1.5 | P4: Integer Programming | +58.65 [+58.21, +59.09] | +46.86 [+46.57, +47.16] | 661.65 | 728.51 |
+| `all` | 2.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 361.45 | 357.05 |
+| `all` | 2.0 | P1: Reactive | +4.17 [+3.30, +5.03] | +3.95 [+3.04, +4.87] | 616.94 | 618.02 |
+| `all` | 2.0 | P2: Worst-First by Band | +15.84 [+15.49, +16.20] | +16.00 [+15.58, +16.44] | 649.62 | 650.28 |
+| `all` | 2.0 | P2t: Traffic-Aware Worst-First | +23.46 [+22.23, +24.82] | +15.13 [+14.27, +16.06] | 611.75 | 657.56 |
+| `all` | 2.0 | P3: Greedy Benefit/Cost | +73.51 [+73.06, +73.96] | +62.11 [+61.81, +62.42] | 645.37 | 712.36 |
+| `all` | 2.0 | P4: Integer Programming | +74.01 [+73.59, +74.44] | +62.41 [+62.14, +62.70] | 646.29 | 712.96 |
+| `cracks` | 0.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | 0.0 | P1: Reactive | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 609.80 | 612.33 |
+| `cracks` | 0.0 | P2: Worst-First by Band | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 746.94 | 747.36 |
+| `cracks` | 0.0 | P2t: Traffic-Aware Worst-First | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 746.94 | 747.36 |
+| `cracks` | 0.0 | P3: Greedy Benefit/Cost | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 866.29 | 879.12 |
+| `cracks` | 0.0 | P4: Integer Programming | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 866.61 | 879.31 |
+| `cracks` | 0.5 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | 0.5 | P1: Reactive | +5.15 [+4.68, +5.63] | +5.34 [+4.86, +5.81] | 604.64 | 606.99 |
+| `cracks` | 0.5 | P2: Worst-First by Band | +2.84 [+2.67, +3.01] | +2.40 [+2.22, +2.59] | 744.10 | 744.96 |
+| `cracks` | 0.5 | P2t: Traffic-Aware Worst-First | +2.84 [+2.67, +3.01] | +2.40 [+2.22, +2.59] | 744.10 | 744.96 |
+| `cracks` | 0.5 | P3: Greedy Benefit/Cost | +9.87 [+9.56, +10.18] | +7.16 [+6.97, +7.35] | 856.42 | 871.96 |
+| `cracks` | 0.5 | P4: Integer Programming | +10.22 [+9.84, +10.60] | +7.38 [+7.15, +7.62] | 856.39 | 871.92 |
+| `cracks` | 1.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | 1.0 | P1: Reactive | +8.29 [+7.80, +8.76] | +8.59 [+8.10, +9.08] | 601.51 | 603.73 |
+| `cracks` | 1.0 | P2: Worst-First by Band | +4.42 [+4.22, +4.62] | +3.46 [+3.24, +3.68] | 742.52 | 743.90 |
+| `cracks` | 1.0 | P2t: Traffic-Aware Worst-First | +4.42 [+4.22, +4.62] | +3.46 [+3.24, +3.68] | 742.52 | 743.90 |
+| `cracks` | 1.0 | P3: Greedy Benefit/Cost | +23.29 [+22.87, +23.73] | +17.79 [+17.53, +18.06] | 843.01 | 861.33 |
+| `cracks` | 1.0 | P4: Integer Programming | +20.77 [+20.29, +21.27] | +16.17 [+15.87, +16.47] | 845.83 | 863.14 |
+| `cracks` | 1.5 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | 1.5 | P1: Reactive | +8.99 [+8.44, +9.51] | +9.27 [+8.70, +9.80] | 600.81 | 603.06 |
+| `cracks` | 1.5 | P2: Worst-First by Band | +6.49 [+6.28, +6.70] | +4.68 [+4.45, +4.90] | 740.45 | 742.68 |
+| `cracks` | 1.5 | P2t: Traffic-Aware Worst-First | +6.49 [+6.28, +6.70] | +4.68 [+4.45, +4.90] | 740.45 | 742.68 |
+| `cracks` | 1.5 | P3: Greedy Benefit/Cost | +37.51 [+37.09, +37.93] | +29.51 [+29.25, +29.77] | 828.78 | 849.61 |
+| `cracks` | 1.5 | P4: Integer Programming | +36.18 [+35.66, +36.71] | +28.84 [+28.51, +29.16] | 830.42 | 850.47 |
+| `cracks` | 2.0 | P0: Do Nothing | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | 545.32 | 548.10 |
+| `cracks` | 2.0 | P1: Reactive | +8.81 [+8.15, +9.50] | +8.66 [+7.97, +9.36] | 600.99 | 603.67 |
+| `cracks` | 2.0 | P2: Worst-First by Band | +10.45 [+10.23, +10.67] | +8.32 [+8.07, +8.56] | 736.49 | 739.04 |
+| `cracks` | 2.0 | P2t: Traffic-Aware Worst-First | +10.45 [+10.23, +10.67] | +8.32 [+8.07, +8.56] | 736.49 | 739.04 |
+| `cracks` | 2.0 | P3: Greedy Benefit/Cost | +47.35 [+46.95, +47.76] | +39.30 [+39.05, +39.55] | 818.94 | 839.82 |
+| `cracks` | 2.0 | P4: Integer Programming | +48.90 [+48.40, +49.41] | +40.28 [+39.96, +40.61] | 817.70 | 839.03 |
+
+---
+
+### 5.3 Explanation of Negative Regrets
+
+In decision theory, regret is defined as the performance deficit of an estimated policy relative to the oracle ($\text{Oracle} - \text{Estimated}$). In this simulation, negative regrets (where the estimated policy achieves *higher* condition-years than its own oracle) occur strictly due to non-smooth policy thresholding:
+
+1. **P1 (Reactive) Under Negative Bias ($b = -5, -10$)**:
+   - P1 has a hard intervention cutoff: it *only* treats segments with $\widehat{\text{PCI}} < 40.0$.
+   - Under an oracle, many segments sit between true PCI 40 and 50 and are ignored by P1, leaving substantial budget unspent (utilization $\le 91.85\%$ on `all`, $\le 46.39\%$ on `cracks`).
+   - Under negative bias ($b = -5$ or $-10$), these borderline segments appear to have $\widehat{\text{PCI}} < 40.0$. This "tricks" P1 into treating them with structural rehabilitation, forcing the policy to spend its idle budget and boosting true condition-years (e.g., regret of $-41.52\text{ CY}$ at $b = -10$ on `all`, and $-52.66\text{ CY}$ on `cracks`).
+2. **P3/P4 Under Mild Positive Bias ($b = +5$)**:
+   - P3 and P4 maximize benefit-cost ratio $\Delta P \cdot A \cdot w / c_T$. Preventive maintenance (+15 gain) costs only $c=1.0$, giving a high benefit-cost ratio, but requires $\widehat{\text{PCI}} \ge 55.0$.
+   - Under mild positive bias ($b = +5$), segments that are structurally slightly below 55 are bumped above 55, allowing P3 to purchase cheap preventive treatments across wider areas. On area-weighted condition, this produces a slight negative regret ($-13.50\text{ CY}$ on `all`, $-7.09\text{ CY}$ on `cracks`), while traffic-weighted regret remains positive or near zero.
+3. **P2t Under Positive Bias ($b = +5, +10$) on Pool 'all'**:
+   - P2t orders segments by $(100 - \widehat{\text{PCI}}) \times w$. Positive bias compresses the $(100 - \widehat{\text{PCI}})$ spread, allowing P2t to allocate treatments across larger areas rather than concentrating only on the worst roads, gaining $+14.06$ AW CY over oracle while conceding TW performance.
+4. **Noise-Only Regret is Strictly Non-Negative**:
+   - In Table 5.2, where inspection errors are strictly zero-mean, regret is $\ge 0$ across all policies and pools without exception. Random inspection noise uniformly degrades decision quality.
+
+---
+
+## 6. Treatment-Model Sensitivity: Smooth Preventive Effectiveness
 
 To test sensitivity to the sharp eligibility threshold ($\text{PCI} \ge 55$), the smooth effectiveness variant $\gamma = \text{clip}((\text{PCI} - 40)/30, 0, 1)$ was simulated across 100 runs on both pools:
 
@@ -177,77 +384,13 @@ To test sensitivity to the sharp eligibility threshold ($\text{PCI} \ge 55$), th
 | **P3: Greedy Benefit/Cost** | 778.87 | 845.03 | +66.16 [+65.65, +66.67] | Rank 1 |
 | **P4: Integer Programming** | 775.87 | 843.72 | +67.85 [+67.36, +68.35] | Rank 2 |
 
-**Key Findings on Smooth Treatment Formulation**:
-1. On the `all` pool, ranking shifts: P1 moves to Rank 2 ahead of P3/P4 because preventive gains on moderately damaged segments (PCI 40–55) are attenuated by the smooth ramp.
-2. On the `cracks` pool, ranking is preserved: P3 and P4 remain dominant (778.87 and 775.87 CY), followed by P2 (770.33 CY) and P1 (618.62 CY).
-3. Information regret for P3 and P4 on the `all` pool decreases from $+63.5\text{ CY}$ under the cliff model to $+43.16\text{ CY}$ under the smooth model, confirming that the hard cliff at PCI 55 had amplified observation error penalties.
-
 ---
 
-## 5. Information-Quality Study (Redone)
-
-### 5.1 Oracle vs. Estimated across Tile Pools (200 Runs)
-> [!NOTE]
-> Ground-truth masks for pothole tiles lack crack annotations. Consequently, in the `all` pool, tiles containing both potholes and fine cracks have partial ground truth, which introduces unmodeled observation discrepancies.
-
-| Tile Pool | Policy | Oracle AW | Est AW | Regret AW [95% CI] | Regret TW [95% CI] |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **cracks only** | **P1: Reactive** | 609.71 | 618.69 | -8.97 [-9.40, -8.55] | -8.26 [-8.69, -7.83] |
-| **cracks only** | **P2: Worst-First by Band** | 746.94 | 774.99 | -28.06 [-28.18, -27.93] | -28.93 [-29.07, -28.79] |
-| **cracks only** | **P3: Greedy Benefit/Cost** | 865.90 | 810.87 | +55.03 [+54.64, +55.43] | +33.65 [+33.42, +33.89] |
-| **cracks only** | **P4: Integer Programming** | 866.33 | 810.80 | +55.53 [+55.13, +55.93] | +34.00 [+33.76, +34.24] |
-| **all** | **P1: Reactive** | 620.61 | 642.80 | -22.19 [-22.94, -21.44] | -22.26 [-23.01, -21.49] |
-| **all** | **P2: Worst-First by Band** | 665.32 | 660.50 | +4.82 [+4.54, +5.11] | +4.48 [+4.12, +4.85] |
-| **all** | **P3: Greedy Benefit/Cost** | 719.27 | 655.83 | +63.44 [+63.13, +63.75] | +44.00 [+43.80, +44.20] |
-| **all** | **P4: Integer Programming** | 720.34 | 656.77 | +63.57 [+63.23, +63.89] | +43.81 [+43.59, +44.02] |
-
-### 5.2 Continuous Noise Scaling Analysis: $\widehat{\text{PCI}}(\lambda) = \text{True} + \lambda \times (\text{Pred} - \text{True})$
-*Regret measured as $\text{Oracle CY} - \text{Estimated}(\lambda)\text{ CY}$ across 100 runs per $\lambda$:*
-
-| Pool | $\lambda$ | Policy | Regret AW [95% CI] | Regret TW [95% CI] |
-| :---: | :---: | :--- | :---: | :---: |
-| `all` | 0.0 | P1: Reactive | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] |
-| `all` | 0.0 | P3: Greedy | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] |
-| `all` | 0.0 | P4: Integer Prog | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] |
-| `all` | 0.5 | P1: Reactive | -9.15 [-10.05, -8.26] | -9.40 [-10.36, -8.45] |
-| `all` | 0.5 | P3: Greedy | +34.84 [+34.40, +35.29] | +21.73 [+21.46, +22.01] |
-| `all` | 0.5 | P4: Integer Prog | +34.43 [+33.98, +34.90] | +21.43 [+21.16, +21.71] |
-| `all` | 1.0 | P1: Reactive | -22.07 [-23.17, -20.95] | -22.17 [-23.30, -21.01] |
-| `all` | 1.0 | P3: Greedy | +63.30 [+62.86, +63.72] | +43.92 [+43.64, +44.18] |
-| `all` | 1.0 | P4: Integer Prog | +63.32 [+62.87, +63.78] | +43.66 [+43.36, +43.95] |
-| `all` | 1.5 | P1: Reactive | -29.81 [-30.78, -28.87] | -29.69 [-30.68, -28.72] |
-| `all` | 1.5 | P3: Greedy | +83.41 [+82.91, +83.88] | +61.85 [+61.53, +62.16] |
-| `all` | 1.5 | P4: Integer Prog | +83.06 [+82.53, +83.57] | +61.40 [+61.05, +61.76] |
-| `all` | 2.0 | P1: Reactive | -26.34 [-27.20, -25.50] | -26.03 [-26.86, -25.20] |
-| `all` | 2.0 | P3: Greedy | +96.75 [+96.29, +97.21] | +75.34 [+75.00, +75.68] |
-| `all` | 2.0 | P4: Integer Prog | +96.61 [+96.08, +97.15] | +74.98 [+74.61, +75.36] |
-| `cracks` | 0.5 | P3: Greedy | +26.42 [+25.94, +26.90] | +16.00 [+15.71, +16.29] |
-| `cracks` | 0.5 | P4: Integer Prog | +25.53 [+24.90, +26.16] | +15.54 [+15.17, +15.92] |
-| `cracks` | 1.0 | P3: Greedy | +55.03 [+54.51, +55.56] | +33.64 [+33.33, +33.96] |
-| `cracks` | 1.0 | P4: Integer Prog | +55.53 [+55.00, +56.04] | +34.00 [+33.69, +34.31] |
-| `cracks` | 1.5 | P3: Greedy | +80.62 [+80.11, +81.13] | +49.91 [+49.61, +50.22] |
-| `cracks` | 1.5 | P4: Integer Prog | +81.14 [+80.69, +81.59] | +50.30 [+50.03, +50.57] |
-| `cracks` | 2.0 | P3: Greedy | +102.17 [+101.69, +102.65] | +65.15 [+64.86, +65.45] |
-| `cracks` | 2.0 | P4: Integer Prog | +103.31 [+102.87, +103.77] | +65.93 [+65.66, +66.22] |
-
-*Regret scales monotonically with inspection noise $\lambda$ for both benefit/cost optimization policies (P3 and P4).*
-
-### 5.3 P1 Physical Intervention Accounting (Numbers Only)
-*Comparison of physical intervention counts and expenditure for P1 (Reactive) over 10 years (200 runs):*
-
-| Metric | Oracle Ground Truth | Estimated Inspection |
-| :--- | :---: | :---: |
-| **Mean Total Segments Treated (10-yr)** | 166.4 | 180.1 |
-| **Mean Total Reconstructions (10-yr)** | 0.0 | 0.0 |
-| **Mean Total Spend (10-yr)** | 2,871,030.3 | 3,068,687.4 |
-
----
-
-## 6. Dual Sensitivity Grids: Scaling vs. Fixed Absolute Budget
+## 7. Sensitivity Grids: Grid 1 and Grid 2 (Fixed Absolute Budget with P2t)
 
 To evaluate how fiscal capital rules interact with unit cost variations, two separate 18-cell sensitivity grids were evaluated across 100 Monte Carlo runs per cell with synchronized random seeds (totaling 36 cells and 18,000 policy-year evaluations). In each cell, nominal winners and statistical co-leaders (policies whose paired difference 95% bootstrap CI relative to the nominal winner includes 0) were determined.
 
-### 6.1 Grid 1: Budget Scales with Rehab Cost ($\text{Budget} = c_{\text{rehab}} \times \text{Area} \times X\%$)
+### 7.1 Grid 1: Budget Scales with Rehab Cost ($\text{Budget} = c_{\text{rehab}} \times \text{Area} \times X\%$)
 *In Grid 1, the total capital budget scales proportionally with the unit cost of rehabilitation:*
 
 | Pool | Budget (%) | Cost Ratio | P0 | P1 | P2 | P3 | P4 | Winner (Area-Weighted) | Co-Leaders (95% CI Contains 0) |
@@ -273,99 +416,95 @@ To evaluate how fiscal capital rules interact with unit cost variations, two sep
 
 ---
 
-### 6.2 Grid 2: Fixed Absolute Budget ($\text{Budget} = 5.0 \times \text{Area} \times X\%$)
-*In Grid 2, the budget is decoupled from unit cost changes and fixed to the reference cost $c_{\text{ref}} = 5.0$:*
+### 7.2 Grid 2: Fixed Absolute Budget ($\text{Budget} = 5.0 \times \text{Area} \times X\%$, Including P2t)
+*In Grid 2, the budget is decoupled from unit cost changes and fixed to the reference cost $c_{\text{ref}} = 5.0$. Both Area-Weighted and Traffic-Weighted winners and co-leaders are reported across the 18 cells:*
 
-| Pool | Budget (%) | Cost Ratio | P0 | P1 | P2 | P3 | P4 | Winner (Area-Weighted) | Co-Leaders (95% CI Contains 0) |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :--- |
-| `all` | 5% | 3 | 361.9 | 618.8 | 622.5 | 583.7 | 585.5 | **P2: Worst-First by Band** | P2 |
-| `all` | 5% | 5 | 361.9 | 528.4 | 511.2 | 534.0 | 532.9 | **P3: Greedy Benefit/Cost** | P3 |
-| `all` | 5% | 8 | 361.9 | 469.7 | 465.5 | 505.8 | 507.7 | **P4: Integer Programming** | P4 |
-| `all` | 10% | 3 | 361.9 | 653.5 | 743.2 | 735.9 | 736.0 | **P2: Worst-First by Band** | P2 |
-| `all` | 10% | 5 | 361.9 | 642.8 | 660.4 | 655.8 | 656.9 | **P2: Worst-First by Band** | P2 |
-| `all` | 10% | 8 | 361.9 | 567.1 | 564.4 | 602.5 | 602.1 | **P3: Greedy Benefit/Cost** | P3, P4 |
-| `all` | 20% | 3 | 361.9 | 653.5 | 773.5 | 873.3 | 873.5 | **P4: Integer Programming** | P3, P4 |
-| `all` | 20% | 5 | 361.9 | 653.5 | 755.6 | 837.8 | 837.8 | **P3: Greedy Benefit/Cost** | P3, P4 |
-| `all` | 20% | 8 | 361.9 | 652.0 | 709.1 | 798.8 | 799.8 | **P4: Integer Programming** | P4 |
-| `cracks` | 5% | 3 | 545.7 | 613.2 | 759.0 | 701.5 | 701.9 | **P2: Worst-First by Band** | P2 |
-| `cracks` | 5% | 5 | 545.7 | 595.3 | 747.2 | 693.3 | 690.8 | **P2: Worst-First by Band** | P2 |
-| `cracks` | 5% | 8 | 545.7 | 580.9 | 700.7 | 689.3 | 685.9 | **P2: Worst-First by Band** | P2 |
-| `cracks` | 10% | 3 | 545.7 | 625.5 | 775.4 | 823.0 | 822.1 | **P3: Greedy Benefit/Cost** | P3 |
-| `cracks` | 10% | 5 | 545.7 | 618.4 | 775.0 | 810.8 | 810.9 | **P4: Integer Programming** | P3, P4 |
-| `cracks` | 10% | 8 | 545.7 | 603.3 | 774.1 | 813.1 | 812.3 | **P3: Greedy Benefit/Cost** | P3 |
-| `cracks` | 20% | 3 | 545.7 | 625.6 | 775.4 | 907.6 | 904.3 | **P3: Greedy Benefit/Cost** | P3 |
-| `cracks` | 20% | 5 | 545.7 | 625.6 | 775.4 | 907.2 | 906.0 | **P3: Greedy Benefit/Cost** | P3 |
-| `cracks` | 20% | 8 | 545.7 | 623.4 | 775.4 | 906.5 | 905.5 | **P3: Greedy Benefit/Cost** | P3 |
+| Pool | Budget (%) | Cost Ratio | Nominal Winner AW | Co-Leaders AW | Nominal Winner TW | Co-Leaders TW |
+| :---: | :---: | :---: | :--- | :--- | :--- | :--- |
+| `all` | 5% | 3 | P2_worst_first_by_band | P2_worst_first_by_band | P4_integer_programming | P4_integer_programming |
+| `all` | 5% | 5 | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `all` | 5% | 8 | P4_integer_programming | P4_integer_programming | P4_integer_programming | P4_integer_programming |
+| `all` | 10% | 3 | P2_worst_first_by_band | P2_worst_first_by_band | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `all` | 10% | 5 | P2_worst_first_by_band | P2_worst_first_by_band | P4_integer_programming | P4_integer_programming |
+| `all` | 10% | 8 | P3_greedy_benefit_cost | P3, P4 | P4_integer_programming | P4_integer_programming |
+| `all` | 20% | 3 | P4_integer_programming | P3, P4 | P4_integer_programming | P3, P4 |
+| `all` | 20% | 5 | P3_greedy_benefit_cost | P3, P4 | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `all` | 20% | 8 | P4_integer_programming | P4_integer_programming | P4_integer_programming | P4_integer_programming |
+| `cracks` | 5% | 3 | P2_worst_first_by_band | P2_worst_first_by_band | P2t_traffic_aware_worst_first | P2t, P4 |
+| `cracks` | 5% | 5 | P2_worst_first_by_band | P2_worst_first_by_band | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `cracks` | 5% | 8 | P2_worst_first_by_band | P2, P2t | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `cracks` | 10% | 3 | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `cracks` | 10% | 5 | P4_integer_programming | P3, P4 | P4_integer_programming | P3, P4 |
+| `cracks` | 10% | 8 | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `cracks` | 20% | 3 | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `cracks` | 20% | 5 | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
+| `cracks` | 20% | 8 | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost | P3_greedy_benefit_cost |
 
----
+#### Grid 2 Victory Tallies across 18 Cells:
 
-### 6.3 Policy Victory & Co-Leader Tallies (18 Cells per Grid)
-
-| Policy | Grid 1 Won (Nominal) | Grid 1 Co-Won | Grid 2 Won (Nominal) | Grid 2 Co-Won |
+| Policy | Nominal Wins (AW) | Co-Wins (AW) | Nominal Wins (TW) | Co-Wins (TW) |
 | :--- | :---: | :---: | :---: | :---: |
 | **P0: Do Nothing** | 0 | 0 | 0 | 0 |
-| **P1: Reactive** | 1 | 1 | 0 | 0 |
-| **P2: Worst-First by Band** | 6 | 6 | 6 | 6 |
-| **P3: Greedy Benefit/Cost** | 7 | 8 | 8 | 10 |
-| **P4: Integer Programming** | 4 | 6 | 4 | 6 |
+| **P1: Reactive** | 0 | 0 | 0 | 0 |
+| **P2: Worst-First by Band** | 6 | 6 | 0 | 0 |
+| **P2t: Traffic-Aware Worst-First** | 0 | 1 | 1 | 1 |
+| **P3: Greedy Benefit/Cost** | 8 | 10 | 10 | 12 |
+| **P4: Integer Programming** | 4 | 6 | 7 | 8 |
 
 ---
 
-### 6.4 Comparative Analysis of Grid 1 vs. Grid 2
-1. **The Cost-Ratio Confound in Grid 1**:
-   In Grid 1, the municipal budget was formulated as $c_{\text{rehab}} \times \text{area} \times X\%$. When $c_{\text{rehab}}$ increases from 3 to 8, the available budget scales by $8/3 = 2.67\times$. This budget expansion allows policies like P3 and P4 to purchase vast quantities of cheap preventive maintenance ($c = 1.0$), artificially boosting condition-years up to 870–913 CY.
-2. **True Cost Pressure in Grid 2**:
-   In Grid 2, fixing the absolute budget reveals the true trade-off: when rehabilitation cost increases from 3 to 8, fewer square meters of structural pavement can be repaired within the constant dollar cap. Consequently, on the `all` pool under 10% budget, condition drops from 736.0 CY (at Ratio 3) to 602.1 CY (at Ratio 8).
-3. **Robustness of P2 Across Capital Formulations**:
-   P2 (Worst-First by Band) achieves exactly 6 nominal wins in both Grid 1 and Grid 2. It consistently wins when budgets are restricted (5% budget) or when initial distress is moderate (`cracks` pool at 5% and 10% Ratio 3).
-4. **Statistical Ties Between P3 and P4**:
-   On a 200-segment network with continuous area budgets, greedy benefit/cost (P3) is a near-optimal continuous relaxation of the 0/1 knapsack integer program (P4). In 8 cells across the two grids, P3 and P4 are statistical co-leaders (their paired difference 95% bootstrap CI includes 0). P4 nominally leads when discrete combinatorial constraints require branch-and-cut precision, while P3 leads when marginal fractional investments are decisive.
+## 8. What We Can and Cannot Conclude
+
+### 8.1 What We Can Conclude (Supported Directly by Data)
+
+1. **Policy Rankings Depend Heavily on Evaluation Metric (AW vs. TW)**:
+   - Under the area-weighted (AW) metric in the base scenario (Table 4.1), P2 leads with $660.50\text{ CY}$ compared to $656.77$ for P4 and $626.94$ for P2t.
+   - Under the traffic-weighted (TW) metric, P4 and P3 dominate with $731.54$ and $730.69\text{ TW CY}$, outperforming P2 ($661.66$) and P2t ($672.45$).
+   - Across Grid 2's 18 cells, P2 achieves 6 nominal wins in AW condition but 0 nominal wins in TW condition. P3/P4 win 17 of 18 cells in TW condition.
+2. **P2t Improves Traffic-Weighted Condition Over P2 at the Expense of Area-Weighted Condition**:
+   - On the `all` pool (Table 4.1), sorting by $(100 - \widehat{\text{PCI}}) \times w_i$ rather than PCI alone gains $+10.79\text{ TW CY}$ [95% CI: $+10.43, +11.14$] over P2, but loses $-33.56\text{ AW CY}$ [$-33.88, -33.23$].
+   - In Grid 2, P2t captures a nominal win in TW condition on `cracks, 5% budget, ratio 3` and co-wins in AW on `cracks, 5% budget, ratio 8`.
+3. **P1 Spending Cap is a Mathematical Property of Its Definition**:
+   - P1 definition strictly forbids intervention on segments with $\widehat{\text{PCI}} \ge 40.0$.
+   - In the base scenario on the `all` pool, P1 spends $3,068,687$ ($91.85\%$ of budget). On the `cracks` pool (where initial conditions are better), P1 spends only $1,629,136$ ($46.39\%$ of budget).
+   - This spend restriction is a direct definitional property: reactive worst-first policies cannot absorb municipal capital allocations when severe backlog is cleared.
+4. **Information Regret Differs Fundamentally Between Bias and Noise**:
+   - **Zero-mean noise ($\lambda$)**: Regret is strictly non-negative ($\ge 0$) across all policies and pools (Table 5.2). Regret scales monotonically with noise scale $\lambda$ for P3/P4, reaching $+74.01\text{ AW CY}$ and $+62.41\text{ TW CY}$ at $\lambda = 2.0$.
+   - **Systematic bias ($b$)**: Creates non-monotonic regret curves with negative regrets due to threshold mechanics:
+     - Negative bias ($b < 0$) forces P1 to treat borderline segments ($40 \le \text{PCI} < 50$), artificially spending unallocated capital and outperforming its own oracle by $-41.52\text{ CY}$ ($b=-10$ on `all`) and $-52.66\text{ CY}$ on `cracks`.
+     - Positive bias ($b = +5$) bumps segments above the preventive threshold ($55.0$), allowing P3/P4 to buy cheap crack sealing across large areas and outperforming their AW oracle by $-13.50\text{ CY}$ on `all`.
+5. **Ranking Sensitivity to Treatment Response Curves (Cliff vs. Smooth)**:
+   - Under the sharp cliff threshold ($\text{PCI} \ge 55$), P2 ranks #1 on AW in the base scenario ($660.50$ vs $656.77$ for P4).
+   - Under the smooth response curve (Section 6), information regret for P3/P4 decreases from $+63.5\text{ CY}$ to $+43.16\text{ CY}$, showing that hard cutoffs amplify inspection noise penalties.
 
 ---
 
-## 7. Threats to Validity, Limitations, and Conclusions
+### 8.2 What We Cannot Conclude
 
-### 7.1 What We Can Conclude
-1. **Model Inaccuracy Penalizes Preventive Optimization Far More than Worst-First**:
-   Policies that optimize benefit-to-cost ratios (P3 and P4) depend sensitively on threshold boundaries (e.g., whether a road is above or below PCI 55 for crack sealing). Model inspection errors cause significant regret (+55 to +63 CY loss). In contrast, reactive policies (P1) and condition-band policies (P2) are relatively robust to inspection noise.
-2. **Metric Alignment Matters**:
-   When evaluated in area-weighted terms, P2 appears nominally competitive with P4. However, when evaluated on traffic-weighted condition-years (matching the municipal objective), P4 and P3 achieve +87 TW CY higher performance than P1 and +70 TW CY higher than P2.
-3. **Reactive Allocations Cannot Scale With Capital Budgets**:
-   P1 (Reactive) exhausts its pool of severely damaged roads at higher budget allocations (20% budget), leaving over 54% of available capital unspent. Expanding treatment eligibility to preventive preservation is mathematically necessary to utilize larger budgets.
-
-### 7.2 What We Cannot Conclude
 1. **No Real-World Municipal Financial Claims**:
-   The costs ($1, 5, 12$) are dimensionless relative units. We cannot claim that implementing this system "saves millions of tax dollars".
+   - All costs ($1, 3, 5, 8, 12$) are dimensionless relative benchmark units. We cannot claim that implementing deep-learning inspection "saves $X$ million dollars in taxpayer funds."
 2. **No Physical Infrastructure Guarantees**:
-   The simulation employs an empirical lognormal deterioration curve with stylized maintenance resets. Real asphalt deterioration depends on climate, subgrade freeze-thaw, axle loads, and drainage conditions not captured in this model.
-3. **Unvalidated Pothole Decisions**:
-   Given that sPCI agreement on pothole pairs in Step 4C was only 42.9%, automated maintenance decisions on potholed streets in deployed settings carry high uncertainty.
+   - The simulation utilizes stylized lognormal degradation curves and immediate condition resets. Actual physical pavement deterioration depends on climate, freeze-thaw cycles, asphalt binder aging, and heavy commercial axle-load spectra not modeled here.
+3. **No Unconditional Policy Superiority**:
+   - No single policy wins across all scenarios. Under low budgets (5%) and area-weighting, condition-band heuristics (P2) dominate; under traffic-weighting or higher budgets, benefit-cost optimizers (P3/P4) dominate.
+4. **Pothole Inferences Carry High Variance**:
+   - As documented in Section 3, pothole tiles have an error standard deviation of $\sigma = 18.81$ sPCI points (more than double CRACK500's $\sigma = 8.48$). Deployed maintenance decisions driven by automated pothole detection entail substantially higher uncertainty.
 
 ---
 
-## 8. Visualizations and Reference Figures
+## 9. Visualizations and Reference Figures
 
-### 8.1 Network Condition Trajectories over Time (10-Year Horizon)
-![Condition Trajectories](file:///c:/Users/Ved/Desktop/DLbasedRoadCracks/road-pci-intelligence/docs/figures/simulation_condition_trajectories.png)
-*Figure 1: Mean area-weighted and traffic-weighted True PCI across 10 years for policies P0 through P4 (10% budget, cost ratio 5, tile pool `all`), with 95% Monte Carlo confidence bands.*
+All publication figures are generated and stored in `docs/figures/`:
 
-### 8.2 Cost-Effectiveness Chart
-![Cost Effectiveness](file:///c:/Users/Ved/Desktop/DLbasedRoadCracks/road-pci-intelligence/docs/figures/simulation_cost_effectiveness.png)
-*Figure 2: Condition-Years Gained relative to P0 versus real cumulative expenditure over 10 years across policies.*
+1. `human_agreement_disagreements.png` (1,758,555 bytes): Qualitative overlay visual of the 8 human disagreement pairs from Step 4C.
+2. `simulation_condition_trajectories.png` (170,752 bytes): 10-year trajectory of network condition across policies P0–P4.
+3. `simulation_cost_effectiveness.png` (81,679 bytes): Condition-years gained per 1,000 units of real spend.
+4. `simulation_regret_vs_bias.png` (885,112 bytes): Area- and traffic-weighted regret vs systematic bias $b \in [-10, +10]$ across pools.
+5. `simulation_regret_vs_lambda.png` (1,023,045 bytes): Area- and traffic-weighted regret vs noise scale $\lambda \in [0, 2]$ across pools.
+6. `simulation_sensitivity_grid_fixed.png` (158,553 bytes): Sensitivity Grid 2 heatmap with P2t co-leaders and winners across 18 cells.
+7. `simulation_sensitivity_grid_scaling.png` (49,496 bytes): Sensitivity Grid 1 heatmap (scaling budget).
+8. `test_overlays_crack500.png` (2,572,546 bytes): 8-image test split segmentation predictions on CRACK500.
+9. `test_overlays_pothole.png` (2,113,079 bytes): 8-image test split segmentation predictions on Pothole-600.
+10. `test_overlays_road_crack.png` (2,365,979 bytes): 8-image test split segmentation predictions on Road Crack.
 
-### 8.3 Information Regret vs. Inspection Noise Level ($\lambda$)
-![Regret vs Lambda](file:///c:/Users/Ved/Desktop/DLbasedRoadCracks/road-pci-intelligence/docs/figures/simulation_regret_vs_lambda.png)
-*Figure 3: Area-weighted regret ($\text{Oracle} - \text{Estimated}$) as a function of noise scaling parameter $\lambda \in [0, 2]$.*
-
-### 8.4 Sensitivity Grid Heatmaps
-![Grid 1 Scaling](file:///c:/Users/Ved/Desktop/DLbasedRoadCracks/road-pci-intelligence/docs/figures/simulation_sensitivity_grid_scaling.png)
-*Figure 4: Sensitivity Grid 1 (Budget Scales with Rehab Cost).*
-
-![Grid 2 Fixed](file:///c:/Users/Ved/Desktop/DLbasedRoadCracks/road-pci-intelligence/docs/figures/simulation_sensitivity_grid_fixed.png)
-*Figure 5: Sensitivity Grid 2 (Fixed Absolute Budget).*
-
-### 8.5 Test Split Overlays and Disagreements
-- CRACK500 8-Image Test Split Overlay: `docs/figures/test_overlays_crack500.png`
-- Pothole 8-Image Test Split Overlay: `docs/figures/test_overlays_pothole.png`
-- Road Crack 8-Image Test Split Overlay: `docs/figures/test_overlays_road_crack.png`
-- Human Agreement Disagreements: `docs/figures/human_agreement_disagreements.png`
+**Total Figure Count in `docs/figures/`**: 10 files.

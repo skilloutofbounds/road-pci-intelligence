@@ -194,6 +194,31 @@ class SimulationEngine:
                         assigned_treatments[i] = t
                         rem_budget -= c
 
+        elif policy_name in ["P2t", "P2t_traffic_aware_worst_first"]:
+            # Same band-based treatment as P2, but segments ordered descending by (100 - decision_pci) * traffic_weight
+            all_indices = list(range(n))
+            all_indices.sort(key=lambda i: (100.0 - decision_pci[i]) * traffic_weights[i], reverse=True)
+            rem_budget = annual_budget
+            for i in all_indices:
+                p = decision_pci[i]
+                if p <= 25.0:
+                    t = "reconstruction"
+                elif p <= 55.0:
+                    t = "rehabilitation"
+                elif p <= 70.0:
+                    if preventive_mode == "cliff":
+                        t = "preventive" if p >= 55.0 else "none"
+                    else:
+                        t = "preventive" if p > 40.0 else "none"
+                else:
+                    t = "none"
+
+                if t != "none":
+                    c = treatment_costs_per_m2[t] * areas[i]
+                    if c <= rem_budget:
+                        assigned_treatments[i] = t
+                        rem_budget -= c
+
         elif policy_name == "P3_greedy_benefit_cost":
             # Benefit = expected PCI gain * area * traffic weight
             candidates = []
@@ -304,13 +329,16 @@ def run_policy_simulation(
     use_oracle: bool = False,
     budget_mode: str = "scales_with_rehab",
     preventive_mode: str = "cliff",
-    noise_lambda: float = 1.0,
+    noise_lambda: Optional[float] = None,
+    bias_b: Optional[float] = None,
+    pool_mean_error: float = 0.0,
     engine: Optional[SimulationEngine] = None,
 ) -> Dict[str, Any]:
     """
     Executes a 10-year policy simulation on a road network.
     Tracks both area-weighted and traffic-weighted condition-years, real spending,
-    and yearly budget utilization.
+    and yearly budget utilization. Supports oracle mode, bias-only (true + b),
+    and noise-only scaling (true + lambda * (predicted - true - pool_mean_error)).
     """
     if engine is None:
         engine = SimulationEngine()
@@ -323,11 +351,27 @@ def run_policy_simulation(
     traffic_weights = df["traffic_weight"].values
 
     current_true = df["true_pci"].values.astype(float).copy()
-    if use_oracle or noise_lambda == 0.0:
+
+    # Determine whether exact oracle mode is active
+    # (use_oracle=True, OR bias_b == 0.0, OR (bias_b is None and noise_lambda == 0.0))
+    is_exact_oracle = use_oracle or (bias_b is not None and float(bias_b) == 0.0) or (bias_b is None and noise_lambda is not None and float(noise_lambda) == 0.0)
+
+    if is_exact_oracle:
+        segment_errors = np.zeros(n)
         current_est = current_true.copy()
-    else:
+    elif bias_b is not None:
+        segment_errors = np.full(n, float(bias_b))
+        current_est = np.clip(current_true + segment_errors, 0.0, 100.0)
+    elif noise_lambda is not None:
         base_est = df["estimated_pci"].values.astype(float).copy()
-        current_est = np.clip(current_true + noise_lambda * (base_est - current_true), 0.0, 100.0)
+        # noise-only: estimate = true + lambda * (predicted - true - pool_mean_error)
+        segment_errors = float(noise_lambda) * (base_est - current_true - float(pool_mean_error))
+        current_est = np.clip(current_true + segment_errors, 0.0, 100.0)
+    else:
+        # Standard unadjusted baseline (as in 5A/5B base table)
+        base_est = df["estimated_pci"].values.astype(float).copy()
+        segment_errors = base_est - current_true
+        current_est = np.clip(current_true + segment_errors, 0.0, 100.0)
 
     # Calculate annual budget based on budget_mode
     if budget_mode == "scales_with_rehab":
@@ -345,7 +389,7 @@ def run_policy_simulation(
     yearly_reconstructions = []
 
     for year in range(1, horizon_years + 1):
-        next_true, next_est, spent, treatments = engine.run_year_step(
+        next_true, _, spent, treatments = engine.run_year_step(
             current_true_pci=current_true,
             current_est_pci=current_est,
             areas=areas,
@@ -354,7 +398,7 @@ def run_policy_simulation(
             policy_name=policy_name,
             rehab_cost_per_m2=rehab_cost_ratio,
             rng=rng,
-            use_oracle=(use_oracle or noise_lambda == 0.0),
+            use_oracle=is_exact_oracle,
             preventive_mode=preventive_mode,
         )
 
@@ -372,7 +416,10 @@ def run_policy_simulation(
         yearly_reconstructions.append(n_reconstructed)
 
         current_true = next_true
-        current_est = next_est
+        if is_exact_oracle:
+            current_est = next_true.copy()
+        else:
+            current_est = np.clip(current_true + segment_errors, 0.0, 100.0)
 
     # Metrics
     condition_years_aw = float(np.sum(yearly_area_weighted_true_pci))
@@ -388,12 +435,14 @@ def run_policy_simulation(
 
     return {
         "policy": policy_name,
-        "oracle": use_oracle,
+        "oracle": is_exact_oracle,
+        "bias_b": bias_b,
+        "noise_lambda": noise_lambda,
+        "pool_mean_error": pool_mean_error,
         "budget_pct": budget_pct,
         "rehab_cost_ratio": rehab_cost_ratio,
         "budget_mode": budget_mode,
         "preventive_mode": preventive_mode,
-        "noise_lambda": noise_lambda,
         "seed": seed,
         "annual_budget": annual_budget,
         "condition_years_aw": condition_years_aw,
@@ -416,11 +465,20 @@ def run_policy_simulation(
 
 
 def _simulate_single_run_worker(args: Tuple) -> List[Dict[str, Any]]:
-    (
-        run_idx, base_seed, network_df, tile_pool_name, policies,
-        budget_pct, rehab_cost_ratio, use_oracle, budget_mode,
-        preventive_mode, noise_lambda
-    ) = args
+    if len(args) == 11:
+        (
+            run_idx, base_seed, network_df, tile_pool_name, policies,
+            budget_pct, rehab_cost_ratio, use_oracle, budget_mode,
+            preventive_mode, noise_lambda
+        ) = args
+        bias_b = None
+        pool_mean_error = 0.0
+    else:
+        (
+            run_idx, base_seed, network_df, tile_pool_name, policies,
+            budget_pct, rehab_cost_ratio, use_oracle, budget_mode,
+            preventive_mode, noise_lambda, bias_b, pool_mean_error
+        ) = args
 
     net = RoadSegmentNetwork(network_df, tile_pool_name=tile_pool_name)
     engine = SimulationEngine()
@@ -429,7 +487,8 @@ def _simulate_single_run_worker(args: Tuple) -> List[Dict[str, Any]]:
     p0_res = run_policy_simulation(
         net, "P0_do_nothing", budget_pct=budget_pct, rehab_cost_ratio=rehab_cost_ratio,
         seed=seed, use_oracle=use_oracle, budget_mode=budget_mode,
-        preventive_mode=preventive_mode, noise_lambda=noise_lambda, engine=engine
+        preventive_mode=preventive_mode, noise_lambda=noise_lambda,
+        bias_b=bias_b, pool_mean_error=pool_mean_error, engine=engine
     )
     p0_cy_aw = p0_res["condition_years_aw"]
     p0_cy_tw = p0_res["condition_years_tw"]
@@ -442,7 +501,8 @@ def _simulate_single_run_worker(args: Tuple) -> List[Dict[str, Any]]:
             res = run_policy_simulation(
                 net, pol, budget_pct=budget_pct, rehab_cost_ratio=rehab_cost_ratio,
                 seed=seed, use_oracle=use_oracle, budget_mode=budget_mode,
-                preventive_mode=preventive_mode, noise_lambda=noise_lambda, engine=engine
+                preventive_mode=preventive_mode, noise_lambda=noise_lambda,
+                bias_b=bias_b, pool_mean_error=pool_mean_error, engine=engine
             )
 
         spent = res["total_spent"]
@@ -457,12 +517,14 @@ def _simulate_single_run_worker(args: Tuple) -> List[Dict[str, Any]]:
             "run": run_idx,
             "seed": seed,
             "policy": pol,
-            "oracle": use_oracle,
+            "oracle": res["oracle"],
             "budget_pct": budget_pct,
             "rehab_cost_ratio": rehab_cost_ratio,
             "budget_mode": budget_mode,
             "preventive_mode": preventive_mode,
             "noise_lambda": noise_lambda,
+            "bias_b": bias_b,
+            "pool_mean_error": pool_mean_error,
             "annual_budget": res["annual_budget"],
             "condition_years_aw": res["condition_years_aw"],
             "condition_years_tw": res["condition_years_tw"],
@@ -487,7 +549,10 @@ def _simulate_single_run_worker(args: Tuple) -> List[Dict[str, Any]]:
 
 def run_monte_carlo(
     network: RoadSegmentNetwork,
-    policies: List[str] = ["P0_do_nothing", "P1_reactive", "P2_worst_first_by_band", "P3_greedy_benefit_cost", "P4_integer_programming"],
+    policies: List[str] = [
+        "P0_do_nothing", "P1_reactive", "P2_worst_first_by_band",
+        "P2t_traffic_aware_worst_first", "P3_greedy_benefit_cost", "P4_integer_programming"
+    ],
     budget_pct: float = 10.0,
     rehab_cost_ratio: float = 5.0,
     n_runs: int = 100,
@@ -495,7 +560,9 @@ def run_monte_carlo(
     use_oracle: bool = False,
     budget_mode: str = "scales_with_rehab",
     preventive_mode: str = "cliff",
-    noise_lambda: float = 1.0,
+    noise_lambda: Optional[float] = None,
+    bias_b: Optional[float] = None,
+    pool_mean_error: float = 0.0,
     max_workers: int = 14,
 ) -> pd.DataFrame:
     """
@@ -506,7 +573,7 @@ def run_monte_carlo(
         (
             idx, base_seed, network.df, network.tile_pool_name, policies,
             budget_pct, rehab_cost_ratio, use_oracle, budget_mode,
-            preventive_mode, noise_lambda
+            preventive_mode, noise_lambda, bias_b, pool_mean_error
         )
         for idx in range(n_runs)
     ]
@@ -547,9 +614,12 @@ def run_sensitivity_grid_scenario(
     """
     Runs an 18-cell sensitivity grid for a specific budget_mode:
     budgets in {5, 10, 20}%, ratios in {3, 5, 8}, tile_pools in {'all', 'cracks'}.
-    100 runs per cell with synchronized seeds. Identifies nominal winner and co-leaders.
+    100 runs per cell with synchronized seeds. Identifies nominal winner and co-leaders (including P2t).
     """
-    policies = ["P0_do_nothing", "P1_reactive", "P2_worst_first_by_band", "P3_greedy_benefit_cost", "P4_integer_programming"]
+    policies = [
+        "P0_do_nothing", "P1_reactive", "P2_worst_first_by_band",
+        "P2t_traffic_aware_worst_first", "P3_greedy_benefit_cost", "P4_integer_programming"
+    ]
     budgets = [5, 10, 20]
     ratios = [3.0, 5.0, 8.0]
     tile_pools = ["all", "cracks"]
@@ -560,23 +630,32 @@ def run_sensitivity_grid_scenario(
     cell_idx = 0
     total_cells = len(tile_pools) * len(budgets) * len(ratios)
 
+    grid_cache_dir = Path("results/cache_grid2")
+    grid_cache_dir.mkdir(parents=True, exist_ok=True)
+
     for pool in tile_pools:
         net = generate_synthetic_network(tile_scores_path=tile_scores_path, tile_pool=pool, seed=42)
         for b in budgets:
             for r in ratios:
                 cell_idx += 1
-                print(f"  [{cell_idx}/{total_cells}] [{budget_mode}] pool={pool}, budget={b}%, ratio={int(r)} (N={n_runs})...", flush=True)
-                mc_df = run_monte_carlo(
-                    network=net,
-                    policies=policies,
-                    budget_pct=float(b),
-                    rehab_cost_ratio=float(r),
-                    n_runs=n_runs,
-                    base_seed=base_seed,
-                    use_oracle=False,
-                    budget_mode=budget_mode,
-                )
-                mc_df["tile_pool"] = pool
+                cell_cache_path = grid_cache_dir / f"cell_{budget_mode}_{pool}_{b}_{int(r)}.csv"
+                if cell_cache_path.exists():
+                    print(f"  [{cell_idx}/{total_cells}] [{budget_mode}] pool={pool}, budget={b}%, ratio={int(r)} (loading cached)...", flush=True)
+                    mc_df = pd.read_csv(cell_cache_path)
+                else:
+                    print(f"  [{cell_idx}/{total_cells}] [{budget_mode}] pool={pool}, budget={b}%, ratio={int(r)} (N={n_runs})...", flush=True)
+                    mc_df = run_monte_carlo(
+                        network=net,
+                        policies=policies,
+                        budget_pct=float(b),
+                        rehab_cost_ratio=float(r),
+                        n_runs=n_runs,
+                        base_seed=base_seed,
+                        use_oracle=False,
+                        budget_mode=budget_mode,
+                    )
+                    mc_df["tile_pool"] = pool
+                    mc_df.to_csv(cell_cache_path, index=False)
                 all_runs_records.append(mc_df)
 
                 # Identify best policy and co-leaders based on area-weighted condition-years
@@ -613,11 +692,13 @@ def run_sensitivity_grid_scenario(
                     "P0_aw": means_aw.get("P0_do_nothing", 0.0),
                     "P1_aw": means_aw.get("P1_reactive", 0.0),
                     "P2_aw": means_aw.get("P2_worst_first_by_band", 0.0),
+                    "P2t_aw": means_aw.get("P2t_traffic_aware_worst_first", means_aw.get("P2t", 0.0)),
                     "P3_aw": means_aw.get("P3_greedy_benefit_cost", 0.0),
                     "P4_aw": means_aw.get("P4_integer_programming", 0.0),
                     "P0_tw": means_tw.get("P0_do_nothing", 0.0),
                     "P1_tw": means_tw.get("P1_reactive", 0.0),
                     "P2_tw": means_tw.get("P2_worst_first_by_band", 0.0),
+                    "P2t_tw": means_tw.get("P2t_traffic_aware_worst_first", means_tw.get("P2t", 0.0)),
                     "P3_tw": means_tw.get("P3_greedy_benefit_cost", 0.0),
                     "P4_tw": means_tw.get("P4_integer_programming", 0.0),
                     "best_policy_aw": best_pol,

@@ -311,6 +311,88 @@ class TestSimulation(unittest.TestCase):
         self.assertIsNotNone(res_real)
         self.assertIsNotNone(res_noisy)
 
+    def test_12_p2t_traffic_aware_ordering_and_budget(self):
+        """Verify P2t orders segments strictly descending by (100 - PCI) * traffic_weight and respects budget."""
+        rng = np.random.RandomState(42)
+        n = 10
+        current_true = np.array([20.0, 30.0, 60.0, 80.0, 20.0, 50.0, 65.0, 10.0, 45.0, 75.0])
+        current_est = current_true.copy()
+        areas = np.full(n, 1000.0)
+        weights = np.array([1.0, 3.0, 2.0, 1.0, 3.0, 2.0, 1.0, 1.0, 2.0, 3.0])
+
+        # Priority scores:
+        # Seg 4: (100-20)*3 = 240 (Reconstruction, cost $12,000)
+        # Seg 1: (100-30)*3 = 210 (Rehabilitation, cost $5,000)
+        # Seg 8: (100-45)*2 = 110 (Rehabilitation, cost $5,000)
+        # Seg 7: (100-10)*1 = 90  (Reconstruction, cost $12,000; note PCI=10 is worse than Seg 1 PCI=30, but lower traffic)
+        # Budget = $17,500 ensures top 2 (Seg 4 and Seg 1) are treated for $17,000, leaving $500.
+        budget = 17500.0
+        _, _, spent, treatments = self.engine.run_year_step(
+            current_true_pci=current_true,
+            current_est_pci=current_est,
+            areas=areas,
+            traffic_weights=weights,
+            annual_budget=budget,
+            policy_name="P2t_traffic_aware_worst_first",
+            rehab_cost_per_m2=5.0,
+            rng=rng,
+        )
+        self.assertEqual(treatments[4], "reconstruction")
+        self.assertEqual(treatments[1], "rehabilitation")
+        # Remaining segments must be "none" because remaining budget ($500) < candidate cost
+        for i in [0, 2, 3, 5, 6, 7, 8, 9]:
+            self.assertEqual(treatments[i], "none", f"Segment {i} unexpectedly treated")
+        self.assertEqual(spent, 17000.0)
+        self.assertLessEqual(spent, budget)
+
+    def test_13_bias_b_zero_and_lambda_zero_reproduce_oracle(self):
+        """Verify b=0 and lambda=0 reproduce the oracle exactly for all policies."""
+        net = create_mock_network(n_segments=20, seed=777)
+        policies = [
+            "P0_do_nothing", "P1_reactive", "P2_worst_first_by_band",
+            "P2t_traffic_aware_worst_first", "P3_greedy_benefit_cost", "P4_integer_programming"
+        ]
+        for pol in policies:
+            res_orc = run_policy_simulation(net, pol, seed=999, use_oracle=True, engine=self.engine)
+            res_b0 = run_policy_simulation(net, pol, seed=999, bias_b=0.0, engine=self.engine)
+            res_lam0 = run_policy_simulation(net, pol, seed=999, noise_lambda=0.0, engine=self.engine)
+
+            self.assertEqual(res_orc["condition_years_aw"], res_b0["condition_years_aw"],
+                             f"{pol}: b=0 AW condition-years != oracle")
+            self.assertEqual(res_orc["condition_years_tw"], res_b0["condition_years_tw"],
+                             f"{pol}: b=0 TW condition-years != oracle")
+            self.assertEqual(res_orc["total_spent"], res_b0["total_spent"],
+                             f"{pol}: b=0 total spent != oracle")
+
+            self.assertEqual(res_orc["condition_years_aw"], res_lam0["condition_years_aw"],
+                             f"{pol}: lambda=0 AW condition-years != oracle")
+            self.assertEqual(res_orc["condition_years_tw"], res_lam0["condition_years_tw"],
+                             f"{pol}: lambda=0 TW condition-years != oracle")
+            self.assertEqual(res_orc["total_spent"], res_lam0["total_spent"],
+                             f"{pol}: lambda=0 total spent != oracle")
+
+    def test_14_p2t_and_bias_noise_deterministic(self):
+        """Verify determinism under fixed seed for P2t and bias/noise settings."""
+        net = create_mock_network(n_segments=20, seed=888)
+        # Test P2t determinism
+        run1 = run_policy_simulation(net, "P2t_traffic_aware_worst_first", seed=555, engine=self.engine)
+        run2 = run_policy_simulation(net, "P2t_traffic_aware_worst_first", seed=555, engine=self.engine)
+        self.assertEqual(run1["condition_years_aw"], run2["condition_years_aw"])
+        self.assertEqual(run1["condition_years_tw"], run2["condition_years_tw"])
+        self.assertEqual(run1["total_spent"], run2["total_spent"])
+
+        # Test bias determinism
+        run_b1 = run_policy_simulation(net, "P4_integer_programming", bias_b=5.0, seed=666, engine=self.engine)
+        run_b2 = run_policy_simulation(net, "P4_integer_programming", bias_b=5.0, seed=666, engine=self.engine)
+        self.assertEqual(run_b1["condition_years_aw"], run_b2["condition_years_aw"])
+        self.assertEqual(run_b1["total_spent"], run_b2["total_spent"])
+
+        # Test noise scaling determinism
+        run_l1 = run_policy_simulation(net, "P3_greedy_benefit_cost", noise_lambda=1.5, pool_mean_error=-3.1, seed=777, engine=self.engine)
+        run_l2 = run_policy_simulation(net, "P3_greedy_benefit_cost", noise_lambda=1.5, pool_mean_error=-3.1, seed=777, engine=self.engine)
+        self.assertEqual(run_l1["condition_years_aw"], run_l2["condition_years_aw"])
+        self.assertEqual(run_l1["total_spent"], run_l2["total_spent"])
+
 
 if __name__ == "__main__":
     unittest.main()
