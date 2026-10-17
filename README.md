@@ -103,7 +103,66 @@ flowchart LR
   - Test Split Overlays: Archived 8-image test split overlays ([`docs/figures/test_overlays_crack500.png`](docs/figures/test_overlays_crack500.png), [`docs/figures/test_overlays_pothole.png`](docs/figures/test_overlays_pothole.png), [`docs/figures/test_overlays_road_crack.png`](docs/figures/test_overlays_road_crack.png)) and human agreement visual audit ([`docs/figures/human_agreement_disagreements.png`](docs/figures/human_agreement_disagreements.png)).
   - Unit Test Suite: [`tests/test_simulation.py`](tests/test_simulation.py) passing 11/11 tests; entire repository suite passing 46/46 unit tests.
   - Comprehensive Documentation: [`docs/simulation.md`](docs/simulation.md) documenting illustrative assumptions, limitations, empirical results, and figures.
-- [ ] **Step 6: Interactive Streamlit Web Application** (Distress overlay inspector & budget scenario planner)
+- [x] **Step 6: Interactive Streamlit Web Application** *(Done)*:
+  - Command Center (`app.py`): Live Pavement Inspector, Double-Blind Human Alignment Explorer, and 10-Year Municipal Simulation Scenario Planner.
+  - End-to-End Pipeline (`src/pipeline.py`): In-memory processing, strict SHA-256 weight verification, flip-TTA inference, and scale-normalized ASTM D6433 feature extraction.
+  - Test Suite (`tests/test_pipeline.py`): Verified 100% agreement with held-out test split benchmark scores.
+
+---
+
+## Run Locally
+
+### 1. Environment Setup
+
+The application is compatible with Python 3.10 – 3.12:
+
+```bash
+# Clone repository
+git clone https://github.com/skilloutofbounds/road-pci-intelligence.git
+cd road-pci-intelligence
+
+# Create and activate virtual environment
+python -m venv venv
+# On Windows:
+.\venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
+
+# Install pinned dependencies
+pip install -r requirements-app.txt
+```
+
+### 2. Model Weights Configuration
+
+The frozen ResNet-34 U-Net perception backbone requires `best.pt` (SHA-256: `9269c5edb6e5d37b359bd3337fbd83c60901cd2b241f9ef789e9116fee400ef7`).
+- The pipeline automatically attempts to load from candidate paths (`outputs/models/best.pt`, `scratch/downloaded_final_weights/best.pt`) or download from the configured Hugging Face Hub repository (`vedshah04/road-pci-intelligence`).
+- To provide weights manually, place `best.pt` in `outputs/models/best.pt`.
+- *Note: Demo Mode has been completely removed to prevent ungrounded inferences. If weights are missing, the app explicitly displays setup instructions.*
+
+### 3. Launching the Command Center
+
+```bash
+streamlit run app.py
+```
+
+### 4. Empirical Performance Benchmarks (CPU Deployment)
+
+Measured on a standard CPU workstation:
+- **Total Cold-Start Time**: **8.70 s**
+  - Dependency & Module Imports: 7.56 s
+  - Model Load & SHA-256 Verification: 1.14 s
+- **720×1280 Image CPU Inference (Flip-TTA, 3 passes)**: **8.41 s ± 0.08 s**
+- **ASTM Features & sPCI Calculation**: Included in inference total (< 0.15 s)
+
+### 5. Running the Automated Test Suite
+
+```bash
+# Run end-to-end perception pipeline fidelity tests (asserts <= 0.5 sPCI diff on 6 test examples)
+python -m unittest -v tests/test_pipeline.py
+
+# Run 10-year municipal maintenance simulation unit tests (14 passing tests)
+python -m unittest -v tests/test_simulation.py
+```
 
 ---
 
@@ -111,35 +170,38 @@ flowchart LR
 
 ```
 road-pci-intelligence/
-├── app/                  # Streamlit application UI and components
+├── app_assets/           # Example held-out test split images & attribution
 ├── configs/              # Model and sPCI parameter configurations
 ├── data/                 # Raw and processed datasets (git-ignored)
-├── docs/                 # Architectural documentation & data decisions
+├── docs/                 # Architectural documentation, facts, & decisions:
+│   ├── PROJECT_FACTS.md         # Traceable facts record for all metrics & tags
+│   ├── simulation.md            # Step 5C simulation results & error decomposition
+│   ├── human_validation.md      # Step 4C double-blind alignment study
+│   ├── pci_design.md            # ASTM D6433 feature extraction & sPCI formulation
+│   └── experiments.md           # Model training, ablation & RDD limitation
 ├── labels/               # Human pairwise preference labeling sheets & templates
 ├── manifests/            # Version-controlled CSV manifests for training & validation
-├── notebooks/            # Isolated Jupyter/Kaggle notebook modules:
-│   ├── 01_data_exploration/     # Exploratory analysis notebook & metadata
-│   ├── 02_manifest_and_loader/  # Manifest builder & reconciliation notebook & metadata
-│   ├── 03_build_rdd_manifest/   # 16-worker parallel RDD manifest builder & metadata
-│   ├── 04_train_baseline/       # Training pipeline, sanity checks & smoke test
-│   ├── 05_train_masked/         # Run A (Masked multi-task loss baseline, 30 epochs)
-│   ├── 06_train_naive/          # Run B (Naive all-zero negative loss baseline, 30 epochs)
-│   ├── 07_eval_threshold_sweep/ # Validation decision threshold sweep (0.3 to 0.9)
-│   ├── 08_rdd_cross_domain/     # RDD cross-domain evaluation (Models A and B)
-│   ├── 08_rdd_cross_domain_abc/ # Combined RDD cross-domain evaluation (Models A, B, and C)
-│   ├── 09_seed_runs/            # Multi-seed training (Seeds 42, 43, 44)
-│   ├── 10_rdd_box_stats/        # Exhaustive RDD box statistics calculator
-│   ├── 11_train_asymmetric_and_rdd_eval/ # Multi-seed asymmetric training & evaluation
-│   ├── 12_final_eval/           # Frozen model test evaluation & out-of-domain audit
-│   ├── 13_features/             # Pavement feature extraction & validation correlation
-│   └── 14_human_agreement/     # Human validation inference & test sPCI calculation
-├── outputs/              # Model checkpoints, evaluation plots, and reports (git-ignored)
+├── notebooks/            # Isolated Jupyter/Kaggle notebook modules (01 to 14)
+├── outputs/              # Model checkpoints and reports (git-ignored)
 ├── results/              # Frozen evaluation scores & tabular benchmark results
-├── scripts/              # Utility scripts (make_pair_sheet, evaluation helpers)
-├── src/                  # Core modular source code (rules, builders, models, PCI, features)
-├── tests/                # Automated unit test suite (manifests, losses, features, spci)
+├── scripts/              # Reproducible evaluation & simulation scripts
+├── src/                  # Core modular source code:
+│   ├── pipeline.py              # RoadPCIPipeline inference & overlay generator
+│   ├── spci.py                  # Simplified PCI deduct curve calculation
+│   ├── pavement_features.py     # ASTM D6433 morphological feature extraction
+│   ├── losses.py                # Multi-task masked and naive loss functions
+│   └── simulation/              # 10-year Monte Carlo engine, network, & policies
+├── tests/                # Automated unit test suite:
+│   ├── test_pipeline.py         # App pipeline fidelity on held-out test examples
+│   ├── test_simulation.py       # 14 simulation mechanics & policy tests
+│   ├── test_spci.py             # sPCI calculation & deduct value tests
+│   ├── test_features.py         # ASTM morphological feature extraction tests
+│   └── test_losses.py           # Multi-task loss gradient masking tests
 ├── .gitignore            # Git ignore configuration
-├── README.md             # Project overview and roadmap
-└── requirements.txt      # Project Python dependencies
+├── app.py                # Streamlit Flagship Command Center application
+├── requirements-app.txt  # Pinned dependencies for local execution
+├── requirements.txt      # Project Python dependencies
+└── README.md             # Project overview, roadmap, and local execution guide
 ```
+
 
