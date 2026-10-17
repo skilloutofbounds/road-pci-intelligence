@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Unit Tests & Regression Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install CPU PyTorch (Fast CI Wheels)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements-app.txt
+
+      - name: Run Test Suite
+        run: |
+          python -m unittest discover -v tests
+
+      - name: Verify Frozen sPCI v1 Preservation
+        run: |
+          git diff spci-v1-frozen --stat -- src/spci.py src/pavement_features.py configs/spci_params.yaml

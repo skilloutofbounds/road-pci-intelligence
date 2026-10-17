@@ -47,7 +47,7 @@ class TestPipeline(unittest.TestCase):
         using the single unified resize rule for all images.
         """
         if not self.weights_available or self.pipeline is None:
-            raise unittest.SkipTest("SKIPPED: Perception weights 'best.pt' absent or invalid.")
+            self.skipTest("Weights not present in clean CI runner")
 
         examples = [
             ("crack500_example_01.jpg", 70.68, "crack500"),

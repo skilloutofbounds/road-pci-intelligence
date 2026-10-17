@@ -40,7 +40,7 @@ class TestProjectFacts(unittest.TestCase):
                 found = True
                 break
         if not found:
-            raise unittest.SkipTest("Perception checkpoint best.pt not found on local path.")
+            self.skipTest("Weights not present in clean CI runner")
 
     def test_02_spci_frozen_tag_commit(self):
         """Verify the commit hash behind git tag spci-v1-frozen starts with 68a30aa."""
@@ -116,6 +116,25 @@ class TestProjectFacts(unittest.TestCase):
         self.assertAlmostEqual(cfg["crack_severity"]["high_threshold_px"], 11.588, places=3)
         self.assertAlmostEqual(cfg["network_factor"]["n_ref"], 1.275, places=3)
         self.assertAlmostEqual(cfg["noise_floor"]["tau_short_sides"], 0.00, places=2)
+
+    def test_06_no_contradictory_legacy_claims_in_docs(self):
+        """
+        Verify that forbidden unverified strings ('81.7%', '+6.7%', '6.30%', 'Spain subset', '$200,000')
+        do not appear anywhere in repository documentation (README.md and docs/*.md).
+        """
+        forbidden_strings = ["81.7%", "+6.7%", "6.30%", "Spain subset", "$200,000"]
+        files_to_check = [Path("README.md")] + list(Path("docs").glob("*.md"))
+
+        violations = []
+        for file_path in files_to_check:
+            if not file_path.exists():
+                continue
+            text = file_path.read_text(encoding="utf-8", errors="ignore")
+            for s in forbidden_strings:
+                if s in text:
+                    violations.append(f"{file_path}: contains forbidden string '{s}'")
+
+        self.assertEqual(violations, [], f"Forbidden legacy strings found in documentation:\n" + "\n".join(violations))
 
 
 if __name__ == "__main__":

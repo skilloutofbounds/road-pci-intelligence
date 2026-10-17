@@ -1,11 +1,17 @@
-numpy
-pandas
-matplotlib
-pillow
-opencv-python
-torch
-torchvision
-segmentation-models-pytorch
-albumentations
-scikit-learn
-streamlit
+# Dependencies for Road PCI Intelligence Command Center & Hugging Face Spaces Deployment
+# Compatible with Python 3.11 - 3.12+
+torch>=2.2.0,<=2.6.0
+torchvision>=0.17.0,<=0.21.0
+segmentation-models-pytorch>=0.3.3,<=0.5.0
+albumentations>=1.4.0,<=1.4.24
+opencv-python-headless>=4.8.0,<=4.11.0.86
+scipy>=1.11.0,<=1.15.2
+pandas>=2.0.0,<=2.2.3
+numpy>=1.24.0,<=2.2.4
+matplotlib>=3.7.0,<=3.10.0
+streamlit>=1.35.0,<=1.43.0
+pillow>=10.0.0,<=11.2.0
+pyyaml>=6.0,<=6.0.2
+huggingface-hub>=0.20.0,<=0.29.0
+scikit-image>=0.21.0,<=0.25.2
+plotly>=5.18.0,<=5.24.1
