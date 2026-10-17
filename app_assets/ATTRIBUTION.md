@@ -1,12 +1,12 @@
 # Dataset Attribution & Licensing for Example Images
 
-This directory contains 6 representative test-split pavement inspection images utilized in the `road-pci-intelligence` interactive dashboard and verification test suite (`tests/test_pipeline.py`).
+This directory contains representative test-split pavement inspection images utilized in the `road-pci-intelligence` interactive dashboard and verification test suite (`tests/test_pipeline.py`).
 
 All images originate strictly from the held-out test splits evaluated in `results/tile_scores.csv`.
 
 ---
 
-## 1. CRACK500 Examples
+## 1. CRACK500 Examples (Pavement Cracks on Asphalt)
 
 - **Files**:
   - `crack500_example_01.jpg` (Original: `CRACK500/JPEGImages/images/20160307_163552.jpg`)
@@ -22,7 +22,7 @@ All images originate strictly from the held-out test splits evaluated in `result
 
 ---
 
-## 2. Road Crack Dataset Examples
+## 2. Road Crack Dataset Examples (Concrete Pavement Cracks)
 
 - **Files**:
   - `road_crack_example_01.jpg` (Original: `road crack dataset semantic/valid/road_1047_6_jpg.rf.aac632486bb3f74cd1d87c56bedc2f68.jpg`)
@@ -36,14 +36,11 @@ All images originate strictly from the held-out test splits evaluated in `result
 
 ---
 
-## 3. Pothole Segmentation Dataset Examples
+## 3. Pothole Dataset Audit & Removal Action
 
-- **Files**:
-  - `pothole_example_01.jpg` (Original: `Pothole_Segmentation_YOLOv8/valid/images/pic-116-_jpg.rf.ddcb9d0e0bcf2a1a5096c4f04e6b7f9e.jpg`)
-    - Split: Test
-    - Target Benchmark sPCI: 43.65 (Poor)
-  - `pothole_example_02.jpg` (Original: `Pothole_Segmentation_YOLOv8/valid/images/pic-140-_jpg.rf.430bfe74decf2b904377d127914f2092.jpg`)
-    - Split: Test
-    - Target Benchmark sPCI: 79.08 (Satisfactory)
-- **Source**: `farzadnekouei/pothole-image-segmentation-dataset` (Roboflow Universe export)
-- **License**: CC BY 4.0 / CC0 Public Domain.
+- **Previous Files**:
+  - `pothole_example_01.jpg`
+  - `pothole_example_02.jpg`
+- **Source**: `farzadnekouei/pothole-image-segmentation-dataset`
+- **Audit Finding**: Although tagged as CC0/CC-BY on Roboflow, the underlying images are unverified web-scraped photographs of potholes lacking verifiable public redistribution licensing.
+- **Action Taken**: **Permanently removed** from `app_assets/examples/` to preserve strict copyright compliance. Only verified, redistributable pavement distress images are provided as app demonstration assets.

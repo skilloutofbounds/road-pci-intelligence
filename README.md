@@ -1,3 +1,15 @@
+---
+title: Road PCI Intelligence Command Center
+emoji: 🛣️
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+sdk_version: 1.40.1
+app_file: app.py
+pinned: false
+python_version: 3.11
+---
+
 # road-pci-intelligence
 
 An end-to-end deep learning and decision-support system designed to automate road distress detection, calculate pavement health metrics, and optimize infrastructure maintenance. Manual road pavement inspection is dangerous, subjective, and difficult to scale across municipal networks. By leveraging deep semantic segmentation to identify and quantify critical distress categories (longitudinal cracks, transverse cracks, alligator cracking, and potholes) from roadway imagery, this system computes an automated, simplified Pavement Condition Index (PCI) score and runs budget-constrained repair prioritization simulations to help municipal planners allocate road maintenance funds effectively.

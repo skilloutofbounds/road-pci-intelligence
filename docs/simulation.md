@@ -176,14 +176,19 @@ To ground the simulation behavior, we report the empirical error structure of th
 
 ### 4.2 Base Table — Pool 'cracks' ($N = 200$ Runs)
 
-| Policy | AW CY [95% CI] | TW CY [95% CI] | Real Spend [95% CI] | Budget Util (%) | Eff AW (CY/1k) [95% CI] | Eff TW (CY/1k) [95% CI] |
+*Note on Budget Accounting: In the simulation execution, the annual budget for the `cracks` network (surface area = $702,354.79\text{ m}^2$) is $351,177.39\text{ units/yr}$ ($3,511,774$ over 10 years). Against this pool-specific budget, P1 spend of $1,629,136$ represents $46.39\%$ budget utilization. If evaluated against the baseline `all`-pool reference budget of $3,340,965$ ($334,096.5\text{ units/yr}$), $1,629,136$ represents $48.76\%$.*
+
+| Policy | AW CY [95% CI] | TW CY [95% CI] | Real Spend [95% CI] | Budget Util (% of Pool Budget) | Eff AW (CY/1k) [95% CI] | Eff TW (CY/1k) [95% CI] |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **P0: Do Nothing** | 545.44 [545.18, 545.70] | 548.37 [548.08, 548.66] | 0 [0, 0] | 0.00% | 0.00 [0.00, 0.00] | 0.00 [0.00, 0.00] |
-| **P1: Reactive** | 618.69 [618.36, 619.01] | 620.41 [620.08, 620.74] | 1,629,136 [1,623,010, 1,635,307] | 46.39% | 0.0450 [0.0448, 0.0451] | 0.0442 [0.0440, 0.0444] |
+| **P1: Reactive** | 618.69 [618.36, 619.01] | 620.41 [620.08, 620.74] | 1,629,136 [1,623,010, 1,635,307] | 46.39% (48.76% of 3.34M) | 0.0450 [0.0448, 0.0451] | 0.0442 [0.0440, 0.0444] |
 | **P2: Worst-First by Band** | 774.99 [774.90, 775.09] | 776.28 [776.18, 776.39] | 1,738,324 [1,735,801, 1,740,889] | 49.50% | 0.132 [0.132, 0.132] | 0.131 [0.131, 0.131] |
 | **P2t: Traffic-Aware Worst-First** | 774.99 [774.90, 775.09] | 776.51 [776.41, 776.62] | 1,738,493 [1,735,935, 1,741,079] | 49.50% | 0.132 [0.132, 0.132] | 0.131 [0.131, 0.131] |
 | **P3: Greedy Benefit/Cost** | 810.89 [810.51, 811.28] | 845.26 [845.03, 845.49] | 3,507,799 [3,507,662, 3,507,935] | 99.89% | 0.0757 [0.0756, 0.0758] | 0.0846 [0.0845, 0.0847] |
 | **P4: Integer Programming** | 810.87 [810.48, 811.27] | 845.21 [844.97, 845.44] | 3,511,596 [3,511,587, 3,511,606] | 99.99% | 0.0756 [0.0755, 0.0757] | 0.0845 [0.0844, 0.0846] |
+
+#### Coincidence of P2 and P2t on Cracks Pool:
+Note that P2 and P2t coincide on the `cracks` pool whenever the budget does not bind. Because initial pavement condition on `cracks` is higher and P2/P2t only exhaust $49.50\%$ of the annual budget ($1,738,324$), all eligible segments needing intervention are funded under both policies regardless of whether candidate segments are prioritized strictly worst-first (P2) or by traffic-weighted urgency score (P2t). Their performance difference is virtually zero (AW difference: $-0.00\text{ CY}$ [$-0.01, +0.00$], TW difference: $+0.23\text{ CY}$ [$+0.22, +0.23$]).
 
 #### Paired Differences on Pool 'cracks' ($N = 200$ Runs):
 - **P2t minus P2**:
@@ -346,19 +351,33 @@ To isolate the effects of systematic calibration error (bias) versus random insp
 
 ### 5.3 Explanation of Negative Regrets
 
-In decision theory, regret is defined as the performance deficit of an estimated policy relative to the oracle ($\text{Oracle} - \text{Estimated}$). In this simulation, negative regrets (where the estimated policy achieves *higher* condition-years than its own oracle) occur strictly due to non-smooth policy thresholding:
+In decision theory, regret is defined as the performance deficit of an estimated policy relative to the oracle ($\text{Oracle} - \text{Estimated}$). In this simulation, negative regrets (where the policy under estimated conditions achieves *higher* condition-years than its own oracle) occur because **the heuristic policy thresholds are fixed a priori rather than globally optimized for the dynamic simulation**. 
+
+Because thresholds like $\widehat{\text{PCI}} < 40.0$ or $\widehat{\text{PCI}} \ge 55.0$ are external rules of thumb, applying them to ground-truth PCI (the "oracle") does not compute the mathematically best achievable 10-year maintenance trajectory. Consequently, an imperfect or biased perception estimate can accidentally trigger earlier, broader, or more aggressive interventions that fortuitously outperform the heuristic oracle.
+
+Specific mechanism hypotheses for observed negative regrets:
 
 1. **P1 (Reactive) Under Negative Bias ($b = -5, -10$)**:
-   - P1 has a hard intervention cutoff: it *only* treats segments with $\widehat{\text{PCI}} < 40.0$.
-   - Under an oracle, many segments sit between true PCI 40 and 50 and are ignored by P1, leaving substantial budget unspent (utilization $\le 91.85\%$ on `all`, $\le 46.39\%$ on `cracks`).
-   - Under negative bias ($b = -5$ or $-10$), these borderline segments appear to have $\widehat{\text{PCI}} < 40.0$. This "tricks" P1 into treating them with structural rehabilitation, forcing the policy to spend its idle budget and boosting true condition-years (e.g., regret of $-41.52\text{ CY}$ at $b = -10$ on `all`, and $-52.66\text{ CY}$ on `cracks`).
+   - *Hypothesis*: P1 definition strictly forbids intervention on segments with $\widehat{\text{PCI}} \ge 40.0$. Under an oracle, many segments sit between true PCI 40 and 50 and are ignored by P1, leaving substantial budget unspent (utilization $\le 91.85\%$ on `all`, $\le 46.39\%$ on `cracks`). Under negative bias ($b = -5$ or $-10$), these borderline segments appear to have $\widehat{\text{PCI}} < 40.0$. This hypothesis suggests negative bias forces P1 to treat borderline segments with structural rehabilitation, consuming otherwise idle budget and boosting true condition-years (e.g., negative regret of $-41.52\text{ CY}$ at $b = -10$ on `all`, and $-52.66\text{ CY}$ on `cracks`).
 2. **P3/P4 Under Mild Positive Bias ($b = +5$)**:
-   - P3 and P4 maximize benefit-cost ratio $\Delta P \cdot A \cdot w / c_T$. Preventive maintenance (+15 gain) costs only $c=1.0$, giving a high benefit-cost ratio, but requires $\widehat{\text{PCI}} \ge 55.0$.
-   - Under mild positive bias ($b = +5$), segments that are structurally slightly below 55 are bumped above 55, allowing P3 to purchase cheap preventive treatments across wider areas. On area-weighted condition, this produces a slight negative regret ($-13.50\text{ CY}$ on `all`, $-7.09\text{ CY}$ on `cracks`), while traffic-weighted regret remains positive or near zero.
+   - *Hypothesis*: P3 and P4 maximize benefit-cost ratio $\Delta P \cdot A \cdot w / c_T$. Preventive maintenance (+15 gain) costs only $c=1.0$, giving a high benefit-cost ratio, but requires $\widehat{\text{PCI}} \ge 55.0$. Under mild positive bias ($b = +5$), hypothesis posits that segments structurally slightly below 55 are bumped above 55, allowing P3 to purchase cheap preventive treatments across wider surface areas. On area-weighted condition, this produces a slight negative regret ($-13.50\text{ CY}$ on `all`, $-7.09\text{ CY}$ on `cracks`), while traffic-weighted regret remains positive or near zero.
 3. **P2t Under Positive Bias ($b = +5, +10$) on Pool 'all'**:
-   - P2t orders segments by $(100 - \widehat{\text{PCI}}) \times w$. Positive bias compresses the $(100 - \widehat{\text{PCI}})$ spread, allowing P2t to allocate treatments across larger areas rather than concentrating only on the worst roads, gaining $+14.06$ AW CY over oracle while conceding TW performance.
+   - *Hypothesis*: P2t orders segments by $(100 - \widehat{\text{PCI}}) \times w$. Positive bias compresses the $(100 - \widehat{\text{PCI}})$ spread, allowing P2t to allocate treatments across larger surface areas rather than concentrating only on the worst segments, gaining $+14.06$ AW CY over oracle while conceding TW performance.
 4. **Noise-Only Regret is Strictly Non-Negative**:
    - In Table 5.2, where inspection errors are strictly zero-mean, regret is $\ge 0$ across all policies and pools without exception. Random inspection noise uniformly degrades decision quality.
+
+---
+
+### 5.4 Empirical Comparison of Bias vs. Noise
+
+Grounding the decomposition in the measured tile-level error structure (Section 3: mean signed error on `all` is $-3.11$, on `cracks` is $-3.53$; per-source signed error: CRACK500 $+0.54$, Road Crack $-7.53$, Pothole $-2.38$):
+
+1. **Magnitude Asymmetry**:
+   - For optimization policies P3 and P4 on the `cracks` pool, a systematic negative bias of $b = -5.0$ produces an Area-Weighted regret of approximately **$+109\text{ condition-years}$** ($+109.59\text{ CY}$ for P3, $+109.06\text{ CY}$ for P4; Table 5.1).
+   - In contrast, zero-mean inspection noise at baseline and half-baseline scales ($\lambda \in [0.5, 1.0]$) produces an Area-Weighted regret of only **$+10\text{ to }+23\text{ condition-years}$** ($+9.87$ to $+23.29\text{ CY}$ for P3, $+10.22$ to $+20.77\text{ CY}$ for P4; Table 5.2).
+2. **Non-Additivity of Errors**:
+   - Systematic bias and random noise effects are **not additive**. Systematic calibration bias shifts candidate segments across discrete treatment boundaries network-wide in every single simulation year, causing severe compounding misallocation in benefit-cost optimizers. Random zero-mean noise, on the other hand, partially cancels across the $k=6$ tiles per segment and across consecutive planning years.
+   - Consequently, eliminating systematic perceptual calibration bias yields far greater decision-theoretic benefit than reducing random zero-mean inspection variance.
 
 ---
 
@@ -466,16 +485,16 @@ To evaluate how fiscal capital rules interact with unit cost variations, two sep
    - In Grid 2, P2t captures a nominal win in TW condition on `cracks, 5% budget, ratio 3` and co-wins in AW on `cracks, 5% budget, ratio 8`.
 3. **P1 Spending Cap is a Mathematical Property of Its Definition**:
    - P1 definition strictly forbids intervention on segments with $\widehat{\text{PCI}} \ge 40.0$.
-   - In the base scenario on the `all` pool, P1 spends $3,068,687$ ($91.85\%$ of budget). On the `cracks` pool (where initial conditions are better), P1 spends only $1,629,136$ ($46.39\%$ of budget).
+   - In the base scenario on the `all` pool, P1 spends $3,068,687$ ($91.85\%$ of budget). On the `cracks` pool (where initial conditions are better), P1 spends only $1,629,136$ ($46.39\%$ of the $3,511,774$ pool budget, or $48.76\%$ if evaluated against the $3,340,965$ baseline reference budget).
    - This spend restriction is a direct definitional property: reactive worst-first policies cannot absorb municipal capital allocations when severe backlog is cleared.
 4. **Information Regret Differs Fundamentally Between Bias and Noise**:
    - **Zero-mean noise ($\lambda$)**: Regret is strictly non-negative ($\ge 0$) across all policies and pools (Table 5.2). Regret scales monotonically with noise scale $\lambda$ for P3/P4, reaching $+74.01\text{ AW CY}$ and $+62.41\text{ TW CY}$ at $\lambda = 2.0$.
    - **Systematic bias ($b$)**: Creates non-monotonic regret curves with negative regrets due to threshold mechanics:
-     - Negative bias ($b < 0$) forces P1 to treat borderline segments ($40 \le \text{PCI} < 50$), artificially spending unallocated capital and outperforming its own oracle by $-41.52\text{ CY}$ ($b=-10$ on `all`) and $-52.66\text{ CY}$ on `cracks`.
-     - Positive bias ($b = +5$) bumps segments above the preventive threshold ($55.0$), allowing P3/P4 to buy cheap crack sealing across large areas and outperforming their AW oracle by $-13.50\text{ CY}$ on `all`.
+     - *Hypothesis*: Negative bias ($b < 0$) forces P1 to treat borderline segments ($40 \le \text{PCI} < 50$), artificially spending unallocated capital and outperforming its own oracle by $-41.52\text{ CY}$ ($b=-10$ on `all`) and $-52.66\text{ CY}$ on `cracks`.
+     - *Hypothesis*: Positive bias ($b = +5$) bumps segments above the preventive threshold ($55.0$), allowing P3/P4 to buy cheap crack sealing across large areas and outperforming their AW oracle by $-13.50\text{ CY}$ on `all`.
 5. **Ranking Sensitivity to Treatment Response Curves (Cliff vs. Smooth)**:
    - Under the sharp cliff threshold ($\text{PCI} \ge 55$), P2 ranks #1 on AW in the base scenario ($660.50$ vs $656.77$ for P4).
-   - Under the smooth response curve (Section 6), information regret for P3/P4 decreases from $+63.5\text{ CY}$ to $+43.16\text{ CY}$, showing that hard cutoffs amplify inspection noise penalties.
+   - Under the smooth response curve (Section 6), information regret for P3/P4 decreases from $+63.5\text{ CY}$ to $+43.16\text{ CY}$, consistent with the hypothesis that hard cutoffs amplify inspection noise penalties.
 
 ---
 

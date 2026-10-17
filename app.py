@@ -23,7 +23,7 @@ from src.pipeline import (
     RoadPCIPipeline,
     create_synthetic_road_tile,
     EXPECTED_SHA256,
-    HF_MODEL_REPO_ID,
+    HF_MODEL_REPO,
 )
 from src.spci import get_condition_class
 from src.simulation.network import generate_synthetic_network
@@ -346,43 +346,41 @@ def render_app():
         st.markdown("### Automated Pavement Condition Assessment")
 
         if pipeline is None:
+            repo_desc = f"the public Hugging Face repository `{HF_MODEL_REPO}`" if HF_MODEL_REPO else "a configured Hugging Face repository (set `HF_MODEL_REPO`)"
             st.error(
                 f"❌ **Perception Model Weights Missing**: Model weights `best.pt` (SHA-256: `{EXPECTED_SHA256}`) "
                 f"could not be loaded.\n\n"
                 f"**Setup Instructions**:\n"
                 f"1. Download `best.pt` and place it in `outputs/models/best.pt`, OR\n"
-                f"2. Ensure the public Hugging Face repository `{HF_MODEL_REPO_ID}` contains `best.pt`.\n\n"
+                f"2. Ensure {repo_desc} contains `best.pt`.\n\n"
                 f"*Demo Mode has been completely removed to prevent ungrounded or synthetic mask generation.*"
             )
         else:
-            st.caption("Select one of the 6 held-out test split example tiles or upload a custom image.")
+            st.caption("Select one of the 4 verified held-out test split example tiles or upload a custom image.")
 
-            # In-Memory Security Confirmation (Requirement 2g-iv)
-            st.info("🔒 **In-Memory Guarantee**: Uploaded images are processed strictly in RAM and never written to disk or persisted.")
+            # In-Memory Security Confirmation (Requirement 8)
+            st.info("🔒 Images are processed in memory and not saved by this app")
 
             col_input, col_ctrl = st.columns([2, 1])
 
-            # 6 Curated Test Split Examples (Requirement 2e & 2f)
+            # 4 Curated Test Split Examples (Verified Open/Academic Licenses)
             EXAMPLE_SPECS = [
                 ("crack500_example_01.jpg", "CRACK500", "Satisfactory", 70.68, "Held-out test split tile with moderate longitudinal cracking"),
                 ("crack500_example_02.jpg", "CRACK500", "Serious", 24.60, "Held-out test split tile with extensive structural alligator fatigue"),
                 ("road_crack_example_01.jpg", "Road Crack", "Good", 90.81, "Held-out test split tile with high surface integrity"),
                 ("road_crack_example_02.jpg", "Road Crack", "Poor", 40.97, "Held-out test split tile with dense branching crack distress"),
-                ("pothole_example_01.jpg", "Pothole", "Poor", 43.65, "Held-out test split tile with structural surface depression"),
-                ("pothole_example_02.jpg", "Pothole", "Satisfactory", 79.08, "Held-out test split tile with minor localized pothole damage"),
             ]
 
             with col_input:
                 input_mode = st.radio(
                     "Input Mode:",
-                    ["Held-Out Test Split Examples (6 Tiles)", "Upload Custom Pavement Image"],
+                    ["Held-Out Test Split Examples (4 Tiles)", "Upload Custom Pavement Image"],
                     horizontal=True,
                 )
 
                 image_to_process = None
-                is_upload_flag = False
 
-                if input_mode == "Held-Out Test Split Examples (6 Tiles)":
+                if input_mode == "Held-Out Test Split Examples (4 Tiles)":
                     example_labels = [
                         f"{spec[1]} | {spec[2]} (Benchmark sPCI: {spec[3]:.1f}) — {spec[4]}"
                         for spec in EXAMPLE_SPECS
@@ -396,8 +394,6 @@ def render_app():
                     ex_path = Path("app_assets/examples") / spec[0]
                     if ex_path.exists():
                         image_to_process = ex_path
-                        # For crack500, upload resizing applies the 0.5 scale factor matching benchmark evaluation
-                        is_upload_flag = (spec[1] == "CRACK500")
                     else:
                         st.error(f"Example file {ex_path} not found.")
 
@@ -409,7 +405,6 @@ def render_app():
                     if uploaded_file is not None:
                         # Pass in-memory BytesIO directly (never written to disk)
                         image_to_process = io.BytesIO(uploaded_file.read())
-                        is_upload_flag = True
                     else:
                         st.info("Please select an image above or upload an orthogonal close-up pavement image.")
 
@@ -420,7 +415,6 @@ def render_app():
                     synth_seed = st.number_input("Pattern Seed:", value=42, step=1)
                     if st.button("Generate Synthetic Tile"):
                         image_to_process = create_synthetic_road_tile(condition=synth_type, seed=synth_seed)
-                        is_upload_flag = False
 
             with col_ctrl:
                 st.markdown("**Perception & Display Settings**")
@@ -428,13 +422,13 @@ def render_app():
                 thresh_pothole = st.slider("Pothole Detection Threshold:", 0.20, 0.80, 0.50, 0.05)
                 overlay_alpha = st.slider("Overlay Transparency (α):", 0.20, 0.80, 0.50, 0.05)
                 use_tta = st.checkbox("Enable Flip-TTA (Mean of Orig, HFlip, VFlip)", value=True)
+                st.caption("ℹ️ CPU inference takes about 8 s on a normal laptop and may take 15-25 s on a free Space.")
 
             if image_to_process is not None:
                 try:
-                    with st.spinner("Executing Deep Perception Backbone (Flip-TTA) & ASTM Feature Extraction..."):
+                    with st.spinner("Analyzing pavement distress with ResNet-34 U-Net (Flip-TTA)... (~8-25 s)"):
                         result = pipeline.infer(
                             image_to_process,
-                            is_upload=is_upload_flag,
                             threshold_crack=thresh_crack,
                             threshold_pothole=thresh_pothole,
                             use_tta=use_tta,

@@ -12,6 +12,7 @@ Integrates:
 
 import hashlib
 import io
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, Union
 import numpy as np
@@ -26,7 +27,7 @@ from src.spci import compute_spci, get_condition_class, load_spci_config
 
 # Constants
 EXPECTED_SHA256 = "9269c5edb6e5d37b359bd3337fbd83c60901cd2b241f9ef789e9116fee400ef7"
-HF_MODEL_REPO_ID = "vedshah04/road-pci-intelligence"
+HF_MODEL_REPO = os.getenv("HF_MODEL_REPO", "")
 DEFAULT_CHECKPOINT_NAME = "best.pt"
 
 # Candidate Local Paths (checked before Hugging Face download)
@@ -53,20 +54,22 @@ def calculate_sha256(filepath: Union[str, Path]) -> str:
 
 def resolve_or_download_weights(
     checkpoint_path: Optional[Union[str, Path]] = None,
-    hf_repo_id: str = HF_MODEL_REPO_ID,
+    hf_repo: Optional[str] = None,
 ) -> Path:
     """
     Resolves model weights from a local path or downloads from Hugging Face Hub.
     Strictly verifies SHA-256 checksum against EXPECTED_SHA256.
     Raises FileNotFoundError or ValueError if weights cannot be verified.
     """
+    target_repo = hf_repo if hf_repo is not None else HF_MODEL_REPO
+
     if checkpoint_path is not None:
         p = Path(checkpoint_path)
         if not p.exists() or not p.is_file():
             raise FileNotFoundError(
                 f"Perception model checkpoint '{checkpoint_path}' does not exist.\n"
                 f"Expected SHA-256: {EXPECTED_SHA256}.\n"
-                f"To fix: place 'best.pt' in 'outputs/models/best.pt' or download from Hugging Face repo '{hf_repo_id}'."
+                f"To fix: place 'best.pt' in 'outputs/models/best.pt' or set HF_MODEL_REPO."
             )
         sha = calculate_sha256(p)
         if sha != EXPECTED_SHA256:
@@ -91,11 +94,18 @@ def resolve_or_download_weights(
                         f"Expected {EXPECTED_SHA256}, got {sha}."
                     )
 
-    # 2. Attempt Hugging Face Hub download
+    # 2. Attempt Hugging Face Hub download if configured
+    if not target_repo:
+        raise FileNotFoundError(
+            f"Perception model checkpoint '{DEFAULT_CHECKPOINT_NAME}' (SHA-256: {EXPECTED_SHA256}) "
+            f"could not be loaded from local candidate paths, and HF_MODEL_REPO environment variable is not configured.\n"
+            f"To fix: place 'best.pt' in 'outputs/models/best.pt' or set HF_MODEL_REPO."
+        )
+
     try:
         from huggingface_hub import hf_hub_download
-        print(f"[Pipeline] Downloading {DEFAULT_CHECKPOINT_NAME} from Hugging Face Hub '{hf_repo_id}'...")
-        downloaded = hf_hub_download(repo_id=hf_repo_id, filename=DEFAULT_CHECKPOINT_NAME)
+        print(f"[Pipeline] Downloading {DEFAULT_CHECKPOINT_NAME} from Hugging Face Hub '{target_repo}'...")
+        downloaded = hf_hub_download(repo_id=target_repo, filename=DEFAULT_CHECKPOINT_NAME)
         downloaded_path = Path(downloaded)
         sha = calculate_sha256(downloaded_path)
         if sha == EXPECTED_SHA256:
@@ -107,9 +117,9 @@ def resolve_or_download_weights(
     except Exception as e:
         raise FileNotFoundError(
             f"Perception model checkpoint '{DEFAULT_CHECKPOINT_NAME}' (SHA-256: {EXPECTED_SHA256}) "
-            f"could not be loaded from local candidate paths or Hugging Face repository '{hf_repo_id}'.\n"
+            f"could not be downloaded from Hugging Face repository '{target_repo}'.\n"
             f"Details: {e}\n"
-            f"To fix: place 'best.pt' in 'outputs/models/best.pt' or create public repo '{hf_repo_id}'."
+            f"To fix: place 'best.pt' in 'outputs/models/best.pt' or verify public repo '{target_repo}'."
         )
 
 
@@ -124,7 +134,7 @@ class RoadPCIPipeline:
         checkpoint_path: Optional[Union[str, Path]] = None,
         spci_config_path: Optional[Union[str, Path]] = "configs/spci_params.yaml",
         device: Optional[str] = None,
-        hf_repo_id: str = HF_MODEL_REPO_ID,
+        hf_repo: str = HF_MODEL_REPO,
     ):
         self.spci_config_path = spci_config_path
         self.spci_config = load_spci_config(spci_config_path)
@@ -135,7 +145,7 @@ class RoadPCIPipeline:
             self.device = torch.device(device)
 
         # Resolve weights (raises FileNotFoundError if missing or invalid)
-        self.checkpoint_path = resolve_or_download_weights(checkpoint_path, hf_repo_id=hf_repo_id)
+        self.checkpoint_path = resolve_or_download_weights(checkpoint_path, hf_repo=hf_repo)
 
         # Initialize U-Net perception backbone
         model = smp.Unet(
@@ -214,10 +224,12 @@ class RoadPCIPipeline:
                 f"Image resolution ({w}x{h}) is too small. Both dimensions must be at least 256 px."
             )
 
-        # 3. For user uploads: resize short side to 720 px (long side capped at 1280 px, keep aspect)
-        if is_upload:
-            short_side = min(h, w)
-            long_side = max(h, w)
+        # 3. Unified resize rule for all images:
+        # If short side > 720, downscale to short side 720 (long side capped at 1280 px, keep aspect)
+        # Otherwise keep native resolution (never upscale)
+        short_side = min(h, w)
+        long_side = max(h, w)
+        if short_side > 720:
             scale = 720.0 / short_side
             new_short = 720
             new_long = int(round(long_side * scale))
