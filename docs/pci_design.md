@@ -4,10 +4,7 @@
 
 The objective of the pavement feature extraction module (`src/pavement_features.py`) and simplified Pavement Condition Index engine (`src/spci.py`) is to bridge raw pixel-level semantic segmentation masks (`crack` and `pothole` channels) and civil engineering pavement condition metrics.
 
-Standard pavement condition rating systems (e.g., ASTM D6433) evaluate distresses based on three orthogonal dimensions:
-1. **Distress Type**: Longitudinal cracking, transverse cracking, alligator (fatigue) cracking, and potholes.
-2. **Distress Extent (Quantity / Density)**: Linear length of cracking (normalized short sides) and surface area of potholes (area fraction).
-3. **Distress Severity**: Crack width (Low, Medium, High) and pothole diameter (Low, Medium, High).
+Standard pavement condition rating systems (e.g., ASTM D6433) evaluate distresses based on three dimensions: distress type, extent, and severity. In this system, the model outputs two channels (crack, pothole), and crack types are not classified into separate distress categories; all detected cracks are evaluated via unified morphological length, width severity tiers, and topological network index.
 
 Because roadway imagery sourced across heterogeneous public benchmarks lacks metric ground-sampling distance (GSD) calibration, the feature pipeline standardizes every mask to a fixed resolution (shorter side = 512 px) and extracts scale-invariant morphological and topological features.
 

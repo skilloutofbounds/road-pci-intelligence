@@ -365,10 +365,10 @@ def render_app():
 
             # 4 Curated Test Split Examples (Verified Open/Academic Licenses)
             EXAMPLE_SPECS = [
-                ("crack500_example_01.jpg", "CRACK500", "Satisfactory", 70.68, "Held-out test split tile with moderate longitudinal cracking"),
-                ("crack500_example_02.jpg", "CRACK500", "Serious", 24.60, "Held-out test split tile with extensive structural alligator fatigue"),
-                ("road_crack_example_01.jpg", "Road Crack", "Good", 90.81, "Held-out test split tile with high surface integrity"),
-                ("road_crack_example_02.jpg", "Road Crack", "Poor", 40.97, "Held-out test split tile with dense branching crack distress"),
+                ("crack500_example_01.jpg", "CRACK500", "Satisfactory", 70.68, "Held-out test split tile"),
+                ("crack500_example_02.jpg", "CRACK500", "Serious", 24.60, "Held-out test split tile"),
+                ("road_crack_example_01.jpg", "Road Crack", "Good", 90.81, "Held-out test split tile"),
+                ("road_crack_example_02.jpg", "Road Crack", "Poor", 40.97, "Held-out test split tile"),
             ]
 
             with col_input:

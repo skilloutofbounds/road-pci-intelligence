@@ -18,7 +18,7 @@ The network consists of $N = 200$ synthetic roadway segments. Each segment $i \i
 - Segment ID: $\text{seg\_000}$ to $\text{seg\_199}$
 - Length: $L_i \sim \mathcal{U}(100.0, 600.0)\text{ meters}$
 - Width: $W_i \sim \mathcal{U}(6.0, 14.0)\text{ meters}$
-- Surface Area: $A_i = L_i \times W_i\text{ m}^2$ (total network surface area $\approx 668,192.9\text{ m}^2$)
+- Surface Area: $A_i = L_i \times W_i\text{ m}^2$. Note that because segment geometry is instantiated per pool, the two pools have different total network surface areas ($668,192.9\text{ m}^2$ on `all` vs. $702,354.8\text{ m}^2$ on `cracks`) and therefore different annual budgets ($334,096.5$ units/yr on `all` vs. $351,177.4$ units/yr on `cracks`).
 - Traffic Classification: Categorical variable drawn with municipal priority weights $w_i$:
   - Low traffic (50% probability, priority weight $w_i = 1.0$)
   - Medium traffic (35% probability, priority weight $w_i = 2.0$)
@@ -358,11 +358,11 @@ Because thresholds like $\widehat{\text{PCI}} < 40.0$ or $\widehat{\text{PCI}} \
 Specific mechanism hypotheses for observed negative regrets:
 
 1. **P1 (Reactive) Under Negative Bias ($b = -5, -10$)**:
-   - *Hypothesis*: P1 definition strictly forbids intervention on segments with $\widehat{\text{PCI}} \ge 40.0$. Under an oracle, many segments sit between true PCI 40 and 50 and are ignored by P1, leaving substantial budget unspent (utilization $\le 91.85\%$ on `all`, $\le 46.39\%$ on `cracks`). Under negative bias ($b = -5$ or $-10$), these borderline segments appear to have $\widehat{\text{PCI}} < 40.0$. This hypothesis suggests negative bias forces P1 to treat borderline segments with structural rehabilitation, consuming otherwise idle budget and boosting true condition-years (e.g., negative regret of $-41.52\text{ CY}$ at $b = -10$ on `all`, and $-52.66\text{ CY}$ on `cracks`).
+   - `[Hypothesis]`: P1 definition strictly forbids intervention on segments with $\widehat{\text{PCI}} \ge 40.0$. Under an oracle, many segments sit between true PCI 40 and 50 and are ignored by P1, leaving substantial budget unspent (utilization $\le 91.85\%$ on `all`, $\le 46.39\%$ on `cracks`). Under negative bias ($b = -5$ or $-10$), these borderline segments appear to have $\widehat{\text{PCI}} < 40.0$. This `[Hypothesis]` forces P1 to treat borderline segments with structural rehabilitation, consuming otherwise idle budget and boosting true condition-years (e.g., negative regret of $-41.52\text{ CY}$ at $b = -10$ on `all`, and $-52.66\text{ CY}$ on `cracks`).
 2. **P3/P4 Under Mild Positive Bias ($b = +5$)**:
-   - *Hypothesis*: P3 and P4 maximize benefit-cost ratio $\Delta P \cdot A \cdot w / c_T$. Preventive maintenance (+15 gain) costs only $c=1.0$, giving a high benefit-cost ratio, but requires $\widehat{\text{PCI}} \ge 55.0$. Under mild positive bias ($b = +5$), hypothesis posits that segments structurally slightly below 55 are bumped above 55, allowing P3 to purchase cheap preventive treatments across wider surface areas. On area-weighted condition, this produces a slight negative regret ($-13.50\text{ CY}$ on `all`, $-7.09\text{ CY}$ on `cracks`), while traffic-weighted regret remains positive or near zero.
+   - `[Hypothesis]`: P3 and P4 maximize benefit-cost ratio $\Delta P \cdot A \cdot w / c_T$. Preventive maintenance (+15 gain) costs only $c=1.0$, giving a high benefit-cost ratio, but requires $\widehat{\text{PCI}} \ge 55.0$. Under mild positive bias ($b = +5$), this `[Hypothesis]` bumps segments above the preventive threshold, allowing P3 to purchase cheap preventive treatments across wider surface areas. On area-weighted condition, this produces a slight negative regret ($-13.50\text{ CY}$ on `all`, $-7.09\text{ CY}$ on `cracks`), while traffic-weighted regret remains positive or near zero.
 3. **P2t Under Positive Bias ($b = +5, +10$) on Pool 'all'**:
-   - *Hypothesis*: P2t orders segments by $(100 - \widehat{\text{PCI}}) \times w$. Positive bias compresses the $(100 - \widehat{\text{PCI}})$ spread, allowing P2t to allocate treatments across larger surface areas rather than concentrating only on the worst segments, gaining $+14.06$ AW CY over oracle while conceding TW performance.
+   - `[Hypothesis]`: P2t orders segments by $(100 - \widehat{\text{PCI}}) \times w$. Positive bias compresses the $(100 - \widehat{\text{PCI}})$ spread, allowing P2t to allocate treatments across larger surface areas rather than concentrating only on the worst segments, gaining $+14.06$ AW CY over oracle while conceding TW performance. In general, `[Hypothesis]` hard cutoffs amplify small perception errors into discrete policy shifts.
 4. **Noise-Only Regret is Strictly Non-Negative**:
    - In Table 5.2, where inspection errors are strictly zero-mean, regret is $\ge 0$ across all policies and pools without exception. Random inspection noise uniformly degrades decision quality.
 
@@ -375,9 +375,7 @@ Grounding the decomposition in the measured tile-level error structure (Section 
 1. **Magnitude Asymmetry**:
    - For optimization policies P3 and P4 on the `cracks` pool, a systematic negative bias of $b = -5.0$ produces an Area-Weighted regret of approximately **$+109\text{ condition-years}$** ($+109.59\text{ CY}$ for P3, $+109.06\text{ CY}$ for P4; Table 5.1).
    - In contrast, zero-mean inspection noise at baseline and half-baseline scales ($\lambda \in [0.5, 1.0]$) produces an Area-Weighted regret of only **$+10\text{ to }+23\text{ condition-years}$** ($+9.87$ to $+23.29\text{ CY}$ for P3, $+10.22$ to $+20.77\text{ CY}$ for P4; Table 5.2).
-2. **Non-Additivity of Errors**:
-   - Systematic bias and random noise effects are **not additive**. Systematic calibration bias shifts candidate segments across discrete treatment boundaries network-wide in every single simulation year, causing severe compounding misallocation in benefit-cost optimizers. Random zero-mean noise, on the other hand, partially cancels across the $k=6$ tiles per segment and across consecutive planning years.
-   - Consequently, eliminating systematic perceptual calibration bias yields far greater decision-theoretic benefit than reducing random zero-mean inspection variance.
+   - Consequently, systematic negative bias dominates zero-mean inspection noise by approximately $5\times$ to $10\times$ on benefit-cost policies on the `cracks` pool. Elimination of systematic perceptual calibration bias yields far greater decision-theoretic benefit than reducing random zero-mean inspection variance.
 
 ---
 

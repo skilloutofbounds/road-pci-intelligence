@@ -58,6 +58,7 @@ class TestDatasetManifests(unittest.TestCase):
 
     def test_02_every_manifest_path_exists_on_disk(self):
         """(b) Assert that all image and mask/label file paths recorded exist on disk."""
+        any_dataset_checked = False
         # Check segmentation manifest
         for src_name, df_src in self.df_seg.groupby('source'):
             spec = DATASET_SPECS.get(src_name)
@@ -65,9 +66,9 @@ class TestDatasetManifests(unittest.TestCase):
                 continue
             root = resolve_dataset_root(spec['owner'], spec['name'])
             if not root or not root.exists():
-                print(f"Skipping disk path check for '{src_name}' (dataset root not mounted in current environment).")
                 continue
 
+            any_dataset_checked = True
             for idx, row in df_src.iterrows():
                 img_file = root / row['image_path']
                 self.assertTrue(img_file.exists(), f"Missing image file on disk: {img_file}")
@@ -83,13 +84,15 @@ class TestDatasetManifests(unittest.TestCase):
             spec_rdd = DATASET_SPECS['rdd2022es']
             root_rdd = resolve_dataset_root(spec_rdd['owner'], spec_rdd['name'])
             if root_rdd and root_rdd.exists():
+                any_dataset_checked = True
                 sample_rdd = self.df_rdd.sample(min(100, len(self.df_rdd)), random_state=42)
                 for idx, row in sample_rdd.iterrows():
                     img_file = root_rdd / row['image_path']
                     self.assertTrue(img_file.exists(), f"Missing image file in RDD2022ES: {img_file}")
                 print(f"[PASS] Sampled paths verified on disk for 'rdd2022es'.")
-        else:
-            print("[SKIPPED (RDD manifest not built in this run)] RDD2022ES disk paths existence check.")
+
+        if not any_dataset_checked:
+            self.skipTest("No raw dataset folders mounted on this machine; skipping path existence checks.")
 
     def test_03_split_sizes_match_specifications(self):
         """(c) Assert split sizes match the established targets."""

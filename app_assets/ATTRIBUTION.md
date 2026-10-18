@@ -11,14 +11,14 @@ All images originate strictly from the held-out test splits evaluated in `result
 - **Files**:
   - `crack500_example_01.jpg` (Original: `CRACK500/JPEGImages/images/20160307_163552.jpg`)
     - Split: Test
-    - Target Benchmark sPCI: 70.68 (Satisfactory)
+    - Benchmark sPCI: 70.68
   - `crack500_example_02.jpg` (Original: `CRACK500/JPEGImages/images/20160328_154202.jpg`)
     - Split: Test
-    - Target Benchmark sPCI: 24.60 (Serious)
-- **Source**: Yang et al., 2016 / Kaggle distribution by `sj26717/crack500`
+    - Benchmark sPCI: 24.60
+- **Source**: Yang et al. (2019) and Kaggle uploader `sj26717` (`sj26717/crack500`)
 - **Citation**:
   > Yang, F., Zhang, L., Yu, S., Prokhorov, D., Mei, X., & Ling, H. (2019). Feature pyramid and hierarchical boosting network for pavement crack detection. *IEEE Transactions on Intelligent Transportation Systems*, 21(4), 1525-1535.
-- **License**: Academic / Research Use (CC0-1.0 noted in Kaggle distribution metadata).
+- **License**: Kaggle metadata states `CC0-1.0`.
 
 ---
 
@@ -27,12 +27,13 @@ All images originate strictly from the held-out test splits evaluated in `result
 - **Files**:
   - `road_crack_example_01.jpg` (Original: `road crack dataset semantic/valid/road_1047_6_jpg.rf.aac632486bb3f74cd1d87c56bedc2f68.jpg`)
     - Split: Test
-    - Target Benchmark sPCI: 90.81 (Good)
+    - Benchmark sPCI: 90.81
   - `road_crack_example_02.jpg` (Original: `road crack dataset semantic/valid/road_1047_1_jpg.rf.08eeaefeb2d3e5e164c42931ae238c7f.jpg`)
     - Split: Test
-    - Target Benchmark sPCI: 40.97 (Poor)
-- **Source**: `rukiyeaydn/road-crack-dataset` (Roboflow Universe export)
-- **License**: CC BY 4.0 / CC0 Public Domain.
+    - Benchmark sPCI: 40.97
+- **Source**: Roboflow Universe dataset `crack-gfyha/road_crack_semantic`
+- **Dataset URL**: https://universe.roboflow.com/crack-gfyha/road_crack_semantic
+- **License**: `CC BY 4.0`.
 
 ---
 
@@ -42,5 +43,5 @@ All images originate strictly from the held-out test splits evaluated in `result
   - `pothole_example_01.jpg`
   - `pothole_example_02.jpg`
 - **Source**: `farzadnekouei/pothole-image-segmentation-dataset`
-- **Audit Finding**: Although tagged as CC0/CC-BY on Roboflow, the underlying images are unverified web-scraped photographs of potholes lacking verifiable public redistribution licensing.
-- **Action Taken**: **Permanently removed** from `app_assets/examples/` to preserve strict copyright compliance. Only verified, redistributable pavement distress images are provided as app demonstration assets.
+- **License Status**: **unverified**
+- **Action Taken**: Permanently removed from `app_assets/examples/` because public redistribution licensing could not be established.

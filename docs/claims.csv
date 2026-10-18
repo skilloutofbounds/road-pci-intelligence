@@ -1,0 +1,46 @@
+claim_id,text,value,source_file,source_locator
+claim_model_heads,The segmentation model architecture has 2 independent output heads (crack and pothole).,"2 independent sigmoid logits (`crack`, `pothole`)",docs/experiments.md,Output Heads
+claim_crack_types_not_classified,Crack types are not classified into separate distress categories.,crack types are not classified into separate distress categories,docs/pci_design.md,Standard pavement condition rating systems
+claim_14_features_crack_area,Distress feature crack_area_frac measures the fraction of roadway surface covered by crack distress.,crack_area_frac,docs/pci_design.md,Crack Distress Features & Pruned Topology
+claim_14_features_crack_length_px,Distress feature crack_length_px measures pruned skeleton centerline length in pixels.,crack_length_px,docs/pci_design.md,crack_length_px
+claim_14_features_crack_length_short_sides,Distress feature crack_length_short_sides normalizes crack length by 512 px short sides.,crack_length_short_sides,docs/pci_design.md,crack_length_short_sides
+claim_14_features_mean_width_px,Distress feature mean_width_px measures mean crack width in pixels.,mean_width_px,docs/pci_design.md,mean_width_px
+claim_14_features_relative_width,Distress feature relative_width measures scale-invariant relative crack width.,relative_width,docs/pci_design.md,relative_width
+claim_14_features_max_width_px,Distress feature max_width_px measures maximum local crack diameter.,max_width_px,docs/pci_design.md,max_width_px
+claim_14_features_width_p90_px,Distress feature width_p90_px measures the 90th percentile of crack width.,width_p90_px,docs/pci_design.md,width_p90_px
+claim_14_features_n_crack_components,Distress feature n_crack_components counts distinct 8-connected crack components.,n_crack_components,docs/pci_design.md,n_crack_components
+claim_14_features_n_junctions,Distress feature n_junctions counts branching nodes on the pruned skeleton.,n_junctions,docs/pci_design.md,n_junctions
+claim_14_features_cells,Distress feature cells counts enclosed background regions inside closed crack masks.,cells,docs/pci_design.md,cells
+claim_14_features_network_index,Distress feature network_index measures topological meshing density per 100 px.,network_index,docs/pci_design.md,network_index
+claim_14_features_pothole_count,Distress feature pothole_count counts distinct pothole defects.,pothole_count,docs/pci_design.md,pothole_count
+claim_14_features_pothole_area_frac,Distress feature pothole_area_frac measures the fraction of surface occupied by potholes.,pothole_area_frac,docs/pci_design.md,pothole_area_frac
+claim_14_features_largest_pothole_frac,Distress feature largest_pothole_frac measures surface fraction of the largest pothole.,largest_pothole_frac,docs/pci_design.md,largest_pothole_frac
+claim_spci_deduct_curve_power,"Deduct values are modeled as power-law functions: DV = min(100.0, a * q^b).","DV = min(100.0, a * (q ** b))",configs/spci_params.yaml,Deduct formula
+claim_spci_params_frozen_tag,sPCI v1 parameters and engine are frozen under tag spci-v1-frozen pointing to commit 68a30aa.,68a30aa532f9c7ae9eb36890915d957656eaa8d7,docs/human_validation.md,sPCI Parameter Freeze
+claim_spci_cdv_formula,sPCI is computed from corrected deduct values via CDV aggregation.,\text{sPCI} = 100.0 - \text{CDV},docs/pci_design.md,Corrected Deduct Value (CDV) & sPCI
+claim_split_crack500,"CRACK500 split has 329 train, 70 val, 72 test images (471 total).",471 images,docs/data_decisions.md,crack500
+claim_split_road_crack,"road_crack split has 290 train, 77 val, 68 test images (435 total).",435 images,docs/data_decisions.md,road_crack
+claim_split_pothole,"pothole split has 612 train, 108 val, 60 test images (780 total).",780 images,docs/data_decisions.md,pothole
+claim_split_combined,"Combined segmentation dataset has 1,231 train, 255 val, 200 test images (1,686 total).","1,686 rows",tests/test_facts.py,test_04_split_sizes_from_manifest
+claim_split_rdd2022es,"rdd2022es has 20,480 train, 2,560 val, 2,560 test images (25,600 total across 4 countries with 8 classes).","25,600 images",docs/data_decisions.md,rdd2022es
+claim_fg_crack500,CRACK500 has 2.65% pixel-weighted foreground and 2.73% mean per-image foreground.,2.6506%,docs/data_decisions.md,crack500
+claim_fg_road_crack,road_crack has 1.75% pixel-weighted foreground for Value 1 crack pixels.,1.7546%,docs/data_decisions.md,road_crack
+claim_road_crack_raw_values,"road_crack raw masks have Value 1 = 3,126,349 px (1.75%), Value 2 = 3,617,725 px (2.03%), Value 3 = 38,614 px (0.02%), Value 0 = 171,393,312 px (96.19%).","3,126,349 pixels",docs/data_decisions.md,Multi-class raw mask value audit
+claim_fg_pothole,pothole has 15.98% pixel-weighted foreground.,15.9757%,docs/data_decisions.md,pothole
+claim_human_agreement_overall,Double-blind human validation achieves 36.0/47 = 76.60% agreement with 1 labeler and 13 same pairs excluded.,36.0 / 47,tests/test_facts.py,test_03_human_agreement_runtime
+claim_human_pairs_distribution,"Human test pairs totaled 60 (27 A, 20 B, 13 same).","A = 27, B = 20, same = 13",docs/human_validation.md,Human Label Distribution
+claim_human_cracks_agreement,"On crack distress, human agreement is 30/33 = 90.91%.",30 / 33 pairs agreed,docs/human_validation.md,Crack Distress
+claim_human_pothole_agreement,"On pothole distress, human agreement is 6.0/14 = 42.86%.",6.0 / 14 pairs agreed,docs/human_validation.md,Pothole Distress
+claim_human_area_baseline_diff,"The paired difference vs the damage-area baseline is +2.13 percentage points with 95% CI [-2.13%, +7.45%], showing no detectable difference.",no detectable difference,docs/human_validation.md,Plain Summary
+claim_human_area_ci,The 95% bootstrap confidence interval for the difference vs damage-area baseline is -2.13% to +7.45%.,"[-2.13%, +7.45%]",docs/human_validation.md,Mean Paired Difference
+claim_rdd_zerobox_clean,"On 800 clean zero-box RDD2022ES test images, crack flag > 0.1% occurs on 5.12% and pothole flag > 0.1% occurs on 45.62%.",5.12% (41 / 800),docs/experiments.md,Zero-Box Images
+claim_rdd_hit_rate_pothole,"On RDD2022ES test images with pothole boxes, the pothole channel hit rate is 19.29%.",19.29% (54 / 280),docs/experiments.md,All Potholes (Classes 6-7)
+claim_rdd_hit_rate_crack,"On RDD2022ES test images with crack boxes, the crack channel hit rate is 8.48%.","8.48% (140 / 1,650)",docs/experiments.md,All Cracks (Classes 0-5)
+claim_rdd_cross_channel_fp,"On RDD2022ES test images with only crack boxes, false pothole detections > 0.1% occur on 34.12%.","34.12% (505 / 1,480)",docs/experiments.md,Images with ONLY Crack Boxes
+claim_sim_illustrative_units,"Simulation costs, budgets, and expenditures are illustrative benchmark units, not real dollars.",ILLUSTRATIVE BENCHMARK ASSUMPTIONS,docs/simulation.md,EXPLICIT DISCLAIMER
+claim_sim_pool_areas_and_budgets,"Network geometry is drawn per pool, yielding 668,192.9 m2 on all vs 702,354.8 m2 on cracks, producing different annual budgets (334,096.5 vs 351,177.4 units).","668,192.9",docs/simulation.md,Surface Area
+claim_sim_pool_all_results,"On pool all, 10-year condition-years are: P0 (361.64 AW, 357.01 TW), P1 (642.80 AW, 644.01 TW), P2 (660.50 AW, 661.66 TW), P2t (626.94 AW, 672.45 TW), P3 (655.82 AW, 730.69 TW), P4 (656.77 AW, 731.54 TW).",656.77,docs/simulation.md,Pool 'all'
+claim_sim_pool_cracks_results,"On pool cracks, 10-year condition-years are: P0 (545.44 AW, 548.37 TW), P1 (618.69 AW, 620.41 TW), P2 (774.99 AW, 776.28 TW), P2t (774.99 AW, 776.51 TW), P3 (810.89 AW, 845.26 TW), P4 (810.87 AW, 845.21 TW).",810.87,docs/simulation.md,Pool 'cracks'
+claim_sim_p1_underspending,"On pool cracks, P1 spends only 1,629,136 units (46.39% of pool budget) because it ignores segments with PCI >= 40.",46.39%,docs/simulation.md,Base Table — Pool 'cracks'
+claim_sim_p2_p2t_coincidence,"When budget does not bind (49.50% spent), P2 and P2t select the exact same segments.",49.50%,docs/simulation.md,Coincidence of P2 and P2t on Cracks Pool
+claim_sim_bias_dominates_noise,"Tile-level bias of -5.0 causes ~109 AW CY regret, dominating zero-mean noise (+10 to +23 AW CY regret) by 5x to 10x.",+109.06,docs/simulation.md,Complete Table 5.1: Bias-Only Decomposition
